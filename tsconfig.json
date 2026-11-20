@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": [
+    "src/index.ts",
+    "src/api.ts",
+    "src/server",
+    "src/format",
+    "test/format",
+    "test/server",
+    "test/skills",
+    "test/scripts",
+    "test/helpers"
+  ]
+}

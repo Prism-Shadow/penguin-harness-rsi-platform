@@ -1,0 +1,14 @@
+# A single package, not a monorepo: this file carries pnpm's settings (pnpm 11 reads them only
+# from here).
+packages:
+  - "."
+# The harness is a peer, not a dependency: the host that loads this plugin supplies it, and the
+# plugin reaches it only through the interfaces it declares (src/server/host.ts). Installing one
+# here would add the whole server to the lock for nothing.
+autoInstallPeers: false
+strictPeerDependencies: false
+allowBuilds:
+  esbuild: true
+  # Pulled in through @prismshadow/penguin-core (types and the interface generator only).
+  "@google/genai": false
+  protobufjs: false

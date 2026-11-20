@@ -1,0 +1,45 @@
+# CI: unit and component tests, the build, formatting, and what a release would ship. No model
+# calls, no Docker, no Harbor: the suites run over temp folders against a fake host.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: The seeds are the pinned benchmark commit's
+        run: node scripts/build-seeds.mjs --check
+
+      - name: Pack twice, compare, and probe the package
+        run: pnpm pack:check --out "$RUNNER_TEMP/packs"
