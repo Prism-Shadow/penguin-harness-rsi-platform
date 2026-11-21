@@ -56,6 +56,11 @@
   "peerDependencies": {
     "@prismshadow/penguin-server": ">=0.2.19"
   },
+  "peerDependenciesMeta": {
+    "@prismshadow/penguin-server": {
+      "optional": true
+    }
+  },
   "scripts": {
     "build": "tsup && vite build && node scripts/gen-ifaces.mjs --project tsconfig.json --out ifaces.json",
     "build-seeds": "node scripts/build-seeds.mjs",

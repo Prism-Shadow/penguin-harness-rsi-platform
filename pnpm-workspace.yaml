@@ -4,7 +4,10 @@ packages:
   - "."
 # The harness is a peer, not a dependency: the host that loads this plugin supplies it, and the
 # plugin reaches it only through the interfaces it declares (src/server/host.ts). Installing one
-# here would add the whole server to the lock for nothing.
+# here would add the whole server to the lock for nothing. package.json marks the peer optional
+# for the same reason on the host's side: the server package pins this plugin in its own
+# dependencies and cannot be its own peer, so a required peer makes pnpm fetch a published
+# server from npm into the host's lock (or fail before that version is published).
 autoInstallPeers: false
 strictPeerDependencies: false
 allowBuilds:
