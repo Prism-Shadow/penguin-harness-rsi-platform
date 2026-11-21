@@ -19,6 +19,7 @@
  *   POST   /tasks                                      start an Agent task (any member, as a
  *                                                      person); `?preview=1` answers the prompt
  *   GET    /tasks?benchmarkId=                         the tasks started here, newest first
+ *                                                      (the host asked only about live ones)
  *
  * An admin's page merges this server's list with each machine's as the answers land, so no
  * machine holds back this server's rows (../merge.ts). A refusal answers
@@ -43,6 +44,7 @@ import { isValidId } from "../format/ids.js";
 import { WorkbenchError, badRequest, errorFields } from "./errors.js";
 import type {
   AgentSkills,
+  AgentTaskStatus,
   AgentTasks,
   PluginCatalog,
   ProjectAccess,
@@ -58,8 +60,11 @@ import {
   agentsOf,
   benchmarkOf,
   parseTaskRequest,
+  settledOf,
+  settledTaskOf,
   specOf,
   taskOf,
+  type SettledRecord,
   type TaskLog,
   type TaskRecord,
 } from "./tasks.js";
@@ -473,19 +478,33 @@ export function workbenchRoutes(deps: WorkbenchRouteDeps): Hono<RouteEnv> {
     if (benchmarkId !== undefined && !isValidId(benchmarkId)) {
       throw badRequest('benchmarkId may only contain letters, digits, "_" and "-".');
     }
-    const records = await deps.log.list(
-      projectId,
-      benchmarkId !== undefined ? { benchmarkId } : {},
+    const viewer = c.var.user.userId;
+    const listed = await deps.log.list(projectId, {
+      viewer,
+      ...(benchmarkId !== undefined ? { benchmarkId } : {}),
+    });
+    // Only a task still under way when last asked is asked of the host; one that ended is read
+    // from its settle line, written the first time the host said so.
+    const ended: SettledRecord[] = [];
+    const tasks = await Promise.all(
+      listed.map(async ({ record, settled }) => {
+        if (settled !== null) return settledTaskOf(record, settled);
+        let status: AgentTaskStatus | null;
+        try {
+          status = await deps.tasks.status(viewer, record.sessionId);
+        } catch {
+          // No answer this time: not listed, and asked again next time.
+          return taskOf(record, null);
+        }
+        const settle = settledOf(record.sessionId, viewer, status);
+        if (settle !== null) ended.push(settle);
+        return taskOf(record, status);
+      }),
     );
-    const statuses = await Promise.all(
-      records.map((record) =>
-        deps.tasks.status(c.var.user.userId, record.sessionId).catch(() => null),
-      ),
-    );
-    const tasks = records
-      .map((record, i) => taskOf(record, statuses[i] ?? null))
-      .filter((task) => task.state !== "gone");
-    return c.json({ tasks } satisfies TasksResponse);
+    for (const settle of ended) await deps.log.append(projectId, settle);
+    return c.json({
+      tasks: tasks.filter((task) => task.state !== "gone"),
+    } satisfies TasksResponse);
   });
 
   app.delete("/:benchmarkId", async (c) => {

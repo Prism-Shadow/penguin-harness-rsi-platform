@@ -10,7 +10,8 @@
  *   a notice naming the plugin and Install; installing it posts to the host's install route for that
  *   Agent, and Start then goes through.
  * - A Benchmark's task list is read every five seconds while the document is visible, not at all
- *   while it is hidden, and at once when it shows again.
+ *   while it is hidden, and at once when it shows again; nor while the frame is hidden (a minimized
+ *   App Center window), and again once it is shown.
  */
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -193,5 +194,40 @@ describe("a Benchmark's task list", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(reads()).toBe(3);
+  });
+
+  it("is not read while the frame is hidden, as in a minimized window", async () => {
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    try {
+      vi.spyOn(window, "frameElement", "get").mockReturnValue(frame);
+    } catch {
+      Object.defineProperty(window, "frameElement", { configurable: true, get: () => frame });
+    }
+    try {
+      const server = serveProject(new FakeServer(), { benchmarks: [benchmark()] });
+      server.on("GET", "/api/projects/proj/benchmarks/sec-a/cases", { cases: [] });
+      server.install();
+      fakeHost();
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await mountApp({ at: "/sec-a" });
+      const reads = () =>
+        server.seen("GET", TASKS).filter((r) => r.query.get("benchmarkId") === "sec-a").length;
+      await waitFor(() => reads() === 1, "the first read");
+
+      frame.style.visibility = "hidden";
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20_000);
+      });
+      expect(reads()).toBe(1);
+
+      frame.style.visibility = "";
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(reads()).toBe(2);
+    } finally {
+      frame.remove();
+    }
   });
 });

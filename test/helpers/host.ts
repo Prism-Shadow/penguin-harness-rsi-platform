@@ -160,6 +160,8 @@ export interface TestHost {
   benchmarksDir(projectId: string): string;
   /** The tasks this host's AgentTasks started, oldest first. */
   started: StartedTask[];
+  /** The Sessions AgentTasks.status was asked about, in order. */
+  statusReads: string[];
   /** Sets where a started conversation stands, as the host would report it; null: gone. */
   setStatus(sessionId: string, status: AgentTaskStatus | null): void;
   /** Projects can be changed during a test (an Agent installs a Skill, say). */
@@ -187,6 +189,7 @@ export async function createTestHost(options: TestHostOptions = {}): Promise<Tes
   };
   const started: StartedTask[] = [];
   const statuses = new Map<string, AgentTaskStatus | null>();
+  const statusReads: string[] = [];
   let sessions = 0;
 
   const projectOf = (projectId: string): FakeProject => {
@@ -292,6 +295,7 @@ export async function createTestHost(options: TestHostOptions = {}): Promise<Tes
         return { sessionId };
       },
       async status(userId, sessionId) {
+        statusReads.push(sessionId);
         const task = started.find((t) => t.sessionId === sessionId);
         // A conversation is its owner's: anyone else cannot open it.
         if (task === undefined || task.userId !== userId) return null;
@@ -320,6 +324,7 @@ export async function createTestHost(options: TestHostOptions = {}): Promise<Tes
     app,
     projects,
     started,
+    statusReads,
     benchmarksDir,
     setStatus(sessionId, status) {
       statuses.set(sessionId, status);

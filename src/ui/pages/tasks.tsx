@@ -5,10 +5,11 @@
  * start time until it has one), where it stands, and Open chat — and a task whose conversation is
  * gone is not listed.
  *
- * The list is read every five seconds while the document is visible and the section is on screen,
- * and not at all while it is hidden; it is read at once when the document shows again, and when a
- * task starts. A task that has just finished is announced to the caller (`onSettled`), since what
- * it wrote — a new evaluation, a new Benchmark — is in the list the page shows.
+ * The list is read every five seconds while the page can be seen, and not at all while it cannot —
+ * the browser tab hidden, or the App Center window minimized (bridge.ts `pageShown`); it is read at
+ * once when the tab shows again, within one interval when the window comes back, and when a task
+ * starts. A task that has just finished is announced to the caller (`onSettled`), since what it
+ * wrote — a new evaluation, a new Benchmark — is in the list the page shows.
  *
  * The confirmation a start shows lives here too: one line, Open chat, and a close.
  */
@@ -21,6 +22,7 @@ import {
   StatusIcon,
 } from "@prismshadow/penguin-ui";
 import type { TaskState, WorkbenchTask } from "../../api";
+import { pageShown } from "../bridge";
 import { useStrings, useWorkbench } from "../context";
 import { formatDateTime } from "../format";
 
@@ -67,23 +69,25 @@ export function useTasks(
       if (timer !== undefined) window.clearTimeout(timer);
       timer = undefined;
     };
+    // A hidden tab stops the timer (its visibilitychange restarts it); a minimized window's page
+    // keeps only the check, which costs no request.
     const schedule = () => {
       stop();
       if (document.visibilityState !== "visible") return;
       timer = window.setTimeout(() => {
-        read();
+        if (pageShown()) read();
         schedule();
       }, TASK_POLL_MS);
     };
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        read();
+        if (pageShown()) read();
         schedule();
       } else {
         stop();
       }
     };
-    read();
+    if (pageShown()) read();
     schedule();
     document.addEventListener("visibilitychange", onVisibility);
     return () => {

@@ -13,7 +13,8 @@
  * - When the form asks for a preview, the prompt comes back in the page's language and nothing
  *   starts.
  * - When the page lists tasks, each shows where its conversation stands, newest first, filtered
- *   by Benchmark; a conversation the viewer cannot open is not listed to them.
+ *   by Benchmark; a conversation the viewer cannot open is not listed to them. The host is asked
+ *   only about a task still under way: how a finished one ended is kept from the first answer.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -386,6 +387,27 @@ describe("workbench tasks", () => {
     host.setStatus(theirs.sessionId, null);
     const asAlice = (await (await host.request("GET", TASKS)).json()) as TasksResponse;
     expect(asAlice.tasks).toEqual([]);
+  });
+
+  it("asks the host only about tasks still under way, keeping how a finished one ended", async () => {
+    const start = async () =>
+      ((await (await host.request("POST", TASKS, {}, evaluate())).json()) as TaskStartResponse).task
+        .sessionId;
+    const finished = await start();
+    const live = await start();
+    host.setStatus(finished, { status: "idle", title: "Evaluate sec-a", pendingApprovals: 0 });
+    await host.request("GET", TASKS);
+    host.statusReads.length = 0;
+    // Continued in the sidebar since: the task the workbench started still ended as it did.
+    host.setStatus(finished, { status: "running", title: "Later chat", pendingApprovals: 0 });
+
+    const listed = (await (await host.request("GET", TASKS)).json()) as TasksResponse;
+
+    expect(host.statusReads).toEqual([live]);
+    expect(listed.tasks.map((t) => [t.sessionId, t.state, t.title])).toEqual([
+      [live, "running", undefined],
+      [finished, "done", "Evaluate sec-a"],
+    ]);
   });
 
   it("keeps the records in the app's state folder, one line each, and skips a torn line", async () => {

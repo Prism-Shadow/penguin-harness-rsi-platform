@@ -82,3 +82,20 @@ export function replaceAt(at: string): void {
     // A document that cannot rewrite its address still moves; the host keeps the location.
   }
 }
+
+/**
+ * Whether the page can be seen: its document is visible and, framed, the frame is not hidden. A
+ * minimized App Center window keeps its frame mounted and laid out with `visibility: hidden`,
+ * which the frame's own document does not report; the frame element (same origin) does.
+ */
+export function pageShown(): boolean {
+  if (document.visibilityState !== "visible") return false;
+  try {
+    const frame = window.frameElement;
+    const view = frame?.ownerDocument.defaultView;
+    if (frame && view && view.getComputedStyle(frame).visibility === "hidden") return false;
+  } catch {
+    // A frame of another origin: the document's own visibility is all there is to go on.
+  }
+  return true;
+}

@@ -12,8 +12,10 @@
  *   that ships it, and nothing starts.
  * - Approval: the form's choice, `allow-all` unless it says otherwise, as a scheduled task's.
  * - Records: one JSON line per task in `<stateDir>/tasks.jsonl` (session id, kind, Benchmark,
- *   Agent, who, approval mode, time). The state of each is read from the host when listed, so a
- *   record never goes stale; a conversation the viewer cannot open is not listed to them.
+ *   Agent, who, approval mode, time). A task still under way is asked of the host each time it is
+ *   listed; once the host has said it is done, failed, or not there for the viewer, a second line
+ *   records that answer for that viewer and the host is not asked again, so a list costs one host
+ *   read per live task, not one per task. A conversation the viewer cannot open is not listed.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -385,7 +387,7 @@ export function stateOf(status: AgentTaskStatus | null): TaskState {
   return "done";
 }
 
-/** One line of `tasks.jsonl`. */
+/** A task line of `tasks.jsonl`. */
 export interface TaskRecord {
   sessionId: string;
   kind: WorkbenchTaskKind;
@@ -396,7 +398,26 @@ export interface TaskRecord {
   createdAt: string;
 }
 
+/**
+ * A settle line of `tasks.jsonl`: how a task ended as the host answered for one viewer (`gone`:
+ * no conversation they can open), kept so that the host is asked about a task only while it runs.
+ */
+export interface SettledRecord {
+  settled: string;
+  viewer: string;
+  state: "done" | "failed" | "gone";
+  title?: string;
+  at: string;
+}
+
+/** A task line, with how it ended for the viewer when that is already recorded. */
+export interface ListedTask {
+  record: TaskRecord;
+  settled: SettledRecord | null;
+}
+
 const TASKS_FILE = "tasks.jsonl";
+const SETTLED_STATES: readonly SettledRecord["state"][] = ["done", "failed", "gone"];
 
 function isRecord(v: unknown): v is TaskRecord {
   const r = v as Partial<TaskRecord> | null;
@@ -411,6 +432,20 @@ function isRecord(v: unknown): v is TaskRecord {
     typeof r.approvalMode === "string" &&
     typeof r.createdAt === "string" &&
     (r.benchmarkId === undefined || typeof r.benchmarkId === "string")
+  );
+}
+
+function isSettled(v: unknown): v is SettledRecord {
+  const r = v as Partial<SettledRecord> | null;
+  return (
+    r !== null &&
+    typeof r === "object" &&
+    typeof r.settled === "string" &&
+    typeof r.viewer === "string" &&
+    typeof r.state === "string" &&
+    SETTLED_STATES.includes(r.state) &&
+    (r.title === undefined || typeof r.title === "string") &&
+    typeof r.at === "string"
   );
 }
 
@@ -442,7 +477,7 @@ async function endsTorn(file: string): Promise<boolean> {
 export class TaskLog {
   constructor(private readonly stateDirOf: (projectId: string) => Promise<string>) {}
 
-  async append(projectId: string, record: TaskRecord): Promise<void> {
+  async append(projectId: string, record: TaskRecord | SettledRecord): Promise<void> {
     const dir = await this.stateDirOf(projectId);
     await fs.mkdir(dir, { recursive: true, mode: 0o700 });
     const file = path.join(dir, TASKS_FILE);
@@ -455,12 +490,15 @@ export class TaskLog {
     });
   }
 
-  /** Newest first, at most `limit`, those about `benchmarkId` when it is given. */
+  /**
+   * Newest first, at most `limit` tasks, those about `benchmarkId` when it is given, each with
+   * how it ended for `viewer` when a settle line says so.
+   */
   async list(
     projectId: string,
-    filter: { benchmarkId?: string } = {},
+    filter: { benchmarkId?: string; viewer?: string } = {},
     limit = TASK_LIST_LIMIT,
-  ): Promise<TaskRecord[]> {
+  ): Promise<ListedTask[]> {
     let text: string;
     try {
       text = await fs.readFile(path.join(await this.stateDirOf(projectId), TASKS_FILE), "utf8");
@@ -468,10 +506,10 @@ export class TaskLog {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
       throw error;
     }
-    const out: TaskRecord[] = [];
-    const lines = text.split("\n");
-    for (let i = lines.length - 1; i >= 0 && out.length < limit; i--) {
-      const line = lines[i]!.trim();
+    const records: TaskRecord[] = [];
+    const settled = new Map<string, SettledRecord>();
+    for (const raw of text.split("\n")) {
+      const line = raw.trim();
       if (line === "") continue;
       let parsed: unknown;
       try {
@@ -479,12 +517,50 @@ export class TaskLog {
       } catch {
         continue;
       }
-      if (!isRecord(parsed)) continue;
-      if (filter.benchmarkId !== undefined && parsed.benchmarkId !== filter.benchmarkId) continue;
-      out.push(parsed);
+      if (isRecord(parsed)) records.push(parsed);
+      else if (isSettled(parsed) && parsed.viewer === filter.viewer) {
+        settled.set(parsed.settled, parsed);
+      }
+    }
+    const out: ListedTask[] = [];
+    for (let i = records.length - 1; i >= 0 && out.length < limit; i--) {
+      const record = records[i]!;
+      if (filter.benchmarkId !== undefined && record.benchmarkId !== filter.benchmarkId) continue;
+      out.push({ record, settled: settled.get(record.sessionId) ?? null });
     }
     return out;
   }
+}
+
+/**
+ * How a task ended, from the host's answer for `viewer`, as a settle line to keep; null while it
+ * is still under way (or waiting on an approval), which is asked again next time.
+ */
+export function settledOf(
+  sessionId: string,
+  viewer: string,
+  status: AgentTaskStatus | null,
+): SettledRecord | null {
+  const state = stateOf(status);
+  if (state !== "done" && state !== "failed" && state !== "gone") return null;
+  const title = typeof status?.title === "string" && status.title !== "" ? status.title : undefined;
+  return {
+    settled: sessionId,
+    viewer,
+    state,
+    ...(title !== undefined ? { title } : {}),
+    at: new Date().toISOString(),
+  };
+}
+
+/** A task as a settle line ended it: no host read. */
+export function settledTaskOf(record: TaskRecord, settled: SettledRecord): WorkbenchTask {
+  return {
+    ...record,
+    state: settled.state,
+    ...(settled.title !== undefined ? { title: settled.title } : {}),
+    pendingApprovals: 0,
+  };
 }
 
 /** A record with where its conversation stands, as the page lists it. */
