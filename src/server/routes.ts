@@ -415,7 +415,7 @@ export function workbenchRoutes(deps: WorkbenchRouteDeps): Hono<RouteEnv> {
     for (const agentId of agentsOf(task)) {
       const agent = listed.find((a) => a.agentId === agentId);
       if (agent === undefined) {
-        throw new WorkbenchError(404, "not_found", `Agent does not exist: ${agentId}`);
+        throw new WorkbenchError(404, "agent_not_found", `Agent does not exist: ${agentId}`);
       }
       if (agent.system === true) {
         throw new WorkbenchError(

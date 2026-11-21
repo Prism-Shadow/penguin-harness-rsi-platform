@@ -181,8 +181,13 @@ describe("workbench tasks", () => {
     expect(host.started).toHaveLength(0);
   });
 
-  it("refuses an outsider and a system Agent", async () => {
+  it("refuses an outsider, an Agent the Project lacks and a system Agent", async () => {
     expect((await host.request("POST", TASKS, { user: "mallory" }, evaluate())).status).toBe(404);
+    const unknown = await host.request("POST", TASKS, {}, evaluate({ targetAgentId: "nobody" }));
+    expect(unknown.status).toBe(404);
+    expect(((await unknown.json()) as { error: { code: string } }).error.code).toBe(
+      "agent_not_found",
+    );
     const system = await host.request("POST", TASKS, {}, evaluate({ agentId: "system_agent" }));
     expect(system.status).toBe(409);
     expect(((await system.json()) as { error: { code: string } }).error.code).toBe(
