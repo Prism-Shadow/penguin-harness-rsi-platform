@@ -386,10 +386,11 @@ export function workbenchRoutes(deps: WorkbenchRouteDeps): Hono<RouteEnv> {
   });
 
   app.post("/tasks", async (c) => {
+    // A person's sign-in first, the preview included: an Agent's token writes no request at all.
+    requireHuman(c);
     const { projectId } = projectOf(c, deps);
     const { user } = c.var;
     const preview = c.req.query("preview") === "1";
-    if (!preview) requireHuman(c);
     const task = parseTaskRequest(await readJson(c));
     const dir = await deps.dirOf(projectId);
     const benchmarkId = benchmarkOf(task);

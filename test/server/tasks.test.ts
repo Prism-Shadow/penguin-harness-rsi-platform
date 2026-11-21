@@ -9,7 +9,7 @@
  *   records the task; the answer carries the conversation and its state.
  * - When the Agent lacks a Skill the task cannot do without, nothing starts and the answer
  *   names the Skill and the plugin that ships it.
- * - When the request comes with the local API token, nothing starts.
+ * - When the request comes with the local API token, nothing starts, and no preview is written.
  * - When the form asks for a preview, the prompt comes back in the page's language and nothing
  *   starts.
  * - When the page lists tasks, each shows where its conversation stands, newest first, filtered
@@ -196,13 +196,14 @@ describe("workbench tasks", () => {
     expect(host.started).toHaveLength(0);
   });
 
-  it("previews the request in the page's language without starting anything, even from the token", async () => {
-    const res = await host.request(
-      "POST",
-      `${TASKS}?preview=1`,
-      { via: "token" },
-      evaluate({ language: "zh", agentId: "writer" }),
+  it("previews the request in the page's language without starting anything, for a person only", async () => {
+    const body = evaluate({ language: "zh", agentId: "writer" });
+    const fromToken = await host.request("POST", `${TASKS}?preview=1`, { via: "token" }, body);
+    expect(fromToken.status).toBe(403);
+    expect(((await fromToken.json()) as { error: { code: string } }).error.code).toBe(
+      "human_required",
     );
+    const res = await host.request("POST", `${TASKS}?preview=1`, {}, body);
     expect(res.status).toBe(200);
     const preview = (await res.json()) as TaskPreviewResponse;
     expect(preview.prompt).toContain("请使用 `agent-evaluation` Skill");
