@@ -1,9 +1,9 @@
 /**
  * The page's files: `GET /api/rsi-workbench/ui/<path>` answers a file of the package's built `ui/`
  * folder (the iframe app) and nothing else — a path with an empty, `.` or `..` segment, a
- * backslash, or one that leaves the folder once links are resolved, is a 404. The harness's
- * contained static-file rule (the retired plugin-ui route's `containedFile` / `uiFileResponse`),
- * kept here until the server face offers it.
+ * backslash, or one reached through any link (out of the folder or inside it), is a 404. The
+ * harness's contained static-file rule (`containedFile` / `uiFileResponse`), kept here until the
+ * server face offers it.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -36,15 +36,17 @@ export function isSafeRelPath(rel: string): boolean {
 }
 
 /**
- * The file `rel` names under `dir`, or null: a safe relative path to a regular file that, with
- * links resolved on both sides, still lies inside `dir`.
+ * The file `rel` names under `dir`, or null: a safe relative path to a regular file reached
+ * through no link — resolved, it is exactly `rel` under the resolved `dir`, so neither a link out
+ * of the folder nor one inside it hands out a file. `dir` itself may lie below a link (a package
+ * in a linked prefix).
  */
 export async function containedFile(dir: string, rel: string): Promise<string | null> {
   if (!isSafeRelPath(rel)) return null;
   try {
     const root = await fs.realpath(dir);
     const file = await fs.realpath(path.join(dir, rel));
-    if (!file.startsWith(root + path.sep)) return null;
+    if (file !== path.join(root, rel)) return null;
     return (await fs.stat(file)).isFile() ? file : null;
   } catch {
     return null;

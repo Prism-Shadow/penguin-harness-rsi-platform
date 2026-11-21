@@ -4,7 +4,7 @@
  * Given a built `ui/` folder with an index, an asset, and links pointing in and out of it:
  * - the index and the assets are served with their content types and revalidated on every load;
  * - a path that climbs out (`..`, encoded or not), a backslash, a folder, a missing file, or a
- *   link to a file outside the folder is a 404 and reveals nothing;
+ *   link — to a file outside the folder or inside it — is a 404 and reveals nothing;
  * - nothing is served to a request that is not signed in (the host's sign-in runs first).
  */
 import fs from "node:fs/promises";
@@ -61,14 +61,27 @@ describe("the page's files", () => {
   });
 
   it.skipIf(!symlinks)(
-    "refuses a link to a file outside the folder, and serves one inside it",
+    "refuses a link, whether it points out of the folder or inside it",
     async () => {
       await fs.symlink(outside, path.join(uiDir, "leak.txt"));
       await fs.symlink(path.join(uiDir, "index.html"), path.join(uiDir, "alias.html"));
-      expect((await host.request("GET", "/api/rsi-workbench/ui/leak.txt")).status).toBe(404);
-      expect((await host.request("GET", "/api/rsi-workbench/ui/alias.html")).status).toBe(200);
+      await fs.symlink(path.join(uiDir, "assets"), path.join(uiDir, "linked"));
+      for (const rel of ["leak.txt", "alias.html", "linked/index-abc.js"]) {
+        const res = await host.request("GET", `/api/rsi-workbench/ui/${rel}`);
+        expect(res.status, rel).toBe(404);
+      }
     },
   );
+
+  it.skipIf(!symlinks)("serves a folder that itself lies below a link", async () => {
+    const linkedRoot = path.join(path.dirname(uiDir), "ui-link");
+    await fs.symlink(uiDir, linkedRoot);
+    await host.dispose();
+    host = await createTestHost({ uiDir: linkedRoot });
+    expect((await host.request("GET", "/api/rsi-workbench/ui/assets/index-abc.js")).status).toBe(
+      200,
+    );
+  });
 
   it("serves nothing to a request that is not signed in", async () => {
     const res = await host.app.request("/api/rsi-workbench/ui/index.html");
