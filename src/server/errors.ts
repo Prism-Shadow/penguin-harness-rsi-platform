@@ -33,17 +33,28 @@ export function notFound(message: string): WorkbenchError {
   return new WorkbenchError(404, "not_found", message);
 }
 
-/** The status, code, message and details of anything thrown: ours, the host's, else a 500. */
+/**
+ * The status, code, message and details of anything thrown: an HttpError of any copy (ours, the
+ * host's) by its brand, as the host's own handler reads one; anything else — an error that merely
+ * has those fields included — is a 500 that says nothing more.
+ */
 export function errorFields(err: unknown): {
   status: number;
   code: string;
   message: string;
   details?: ErrorDetails;
 } {
-  const e = err as { status?: unknown; code?: unknown; message?: unknown; details?: unknown };
+  const e = err as {
+    status?: unknown;
+    code?: unknown;
+    message?: unknown;
+    details?: unknown;
+    [HTTP_ERROR_BRAND]?: unknown;
+  };
   if (
     e !== null &&
     typeof e === "object" &&
+    e[HTTP_ERROR_BRAND] === true &&
     typeof e.status === "number" &&
     e.status >= 400 &&
     e.status < 600 &&
