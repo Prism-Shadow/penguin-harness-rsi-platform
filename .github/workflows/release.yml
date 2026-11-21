@@ -1,0 +1,79 @@
+# Release: tag `v<version>` (the version in package.json) and this workflow builds the package,
+# packs it, checks that a second pack gives the same bytes, and publishes ONE tarball twice: as
+# the GitHub release's asset (with the CHANGELOG section as the notes) and to npm. The plugin
+# index registers that tarball's sha512 for both channels.
+#
+# npm: the first version is published by hand from a maintainer's account; after that, npm's
+# trusted publishing is configured for this repository and this workflow, and the publish step
+# below runs with provenance. Until then, set the repository variable NPM_TRUSTED_PUBLISHING to
+# anything but "true" and publish the attached tarball by hand.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: The tag is the package's version
+        id: tag
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          declared=$(node -p "require('./package.json').version")
+          if [ "$declared" != "$version" ]; then
+            echo "package.json says $declared, the tag says $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Pack twice, compare, and probe the package
+        run: pnpm pack:check --out "$RUNNER_TEMP/packs"
+
+      - name: GitHub release with the changelog section and the tarball
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { on=1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md | sed '/./,$!d' > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "v$VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            "$RUNNER_TEMP/packs/pack-1/penguinharness-rsi-workbench-$VERSION.tgz"
+
+      - name: Publish the same tarball to npm (trusted publishing)
+        if: ${{ vars.NPM_TRUSTED_PUBLISHING == 'true' }}
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: npm publish "$RUNNER_TEMP/packs/pack-1/penguinharness-rsi-workbench-$VERSION.tgz" --provenance --access public

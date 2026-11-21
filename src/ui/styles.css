@@ -1,0 +1,82 @@
+/*
+ * The page's own utilities. The UI package's compiled stylesheet (imported before this file in
+ * main.tsx) carries the components, the theme packs and the token values; what it cannot carry is
+ * the utilities this page's own markup names, so Tailwind compiles those here, scanning this folder
+ * only. The bridge below is the UI package's theme.css bridge, as far as this page uses it: each
+ * utility reads the `--ui-*` token directly, so the tokens the host writes on the frame's root (and
+ * the theme packs' own rules outside a frame) resolve at the element. The host also writes the
+ * theme's gray scale on the root, which the stock `gray-*` utilities read.
+ */
+@import "tailwindcss" source(".");
+
+/* Dark mode is the `dark` class the host writes on <html>, not the media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-canvas: var(--ui-canvas);
+  --color-surface: var(--ui-surface);
+  --color-surface-muted: var(--ui-surface-muted);
+  --color-surface-inset: var(--ui-inset);
+
+  --color-fg: var(--ui-fg);
+  --color-fg-emphasis: var(--ui-fg-emphasis);
+  --color-fg-muted: var(--ui-fg-muted);
+  --color-fg-subtle: var(--ui-fg-subtle);
+  --color-link: var(--ui-fg-link);
+  --color-link-hover: var(--ui-fg-link-hover);
+
+  --color-line: var(--ui-line);
+  --color-line-muted: var(--ui-line-muted);
+  --color-line-emphasis: var(--ui-line-emphasis);
+  --color-divider: var(--ui-divider);
+
+  --color-accent: var(--ui-accent);
+  --color-accent-fg: var(--ui-accent-fg);
+  --color-accent-muted: var(--ui-accent-muted);
+
+  --color-tone-success-fg: var(--ui-tone-success-fg);
+  --color-tone-success-bg: var(--ui-tone-success-bg);
+  --color-tone-attention-fg: var(--ui-tone-attention-fg);
+  --color-tone-attention-bg: var(--ui-tone-attention-bg);
+  --color-tone-danger-fg: var(--ui-tone-danger-fg);
+  --color-tone-danger-bg: var(--ui-tone-danger-bg);
+  --color-tone-neutral-fg: var(--ui-tone-neutral-fg);
+  --color-tone-info-fg: var(--ui-tone-info-fg);
+
+  --font-sans: var(--ui-font-sans);
+  --font-ui: var(--ui-font-ui);
+  --font-mono: var(--ui-font-mono);
+
+  --spacing: var(--ui-space-unit);
+
+  --text-xs: var(--ui-text-small-size);
+  --text-xs--line-height: var(--ui-text-small-lh);
+  --text-sm: var(--ui-text-body-size);
+  --text-sm--line-height: var(--ui-text-body-lh);
+
+  --radius-xs: var(--ui-radius-xs);
+  --radius-sm: var(--ui-radius-sm);
+  --radius-md: var(--ui-radius-md);
+  --radius-lg: var(--ui-radius-lg);
+  --radius-xl: var(--ui-radius-xl);
+
+  --shadow-sm: var(--ui-shadow-raised);
+  --shadow-lg: var(--ui-shadow-overlay);
+
+  --default-transition-duration: var(--ui-dur-fast);
+}
+
+/*
+ * The page fills the window's frame and scrolls inside its own column (PageFrame), and it paints
+ * no background: the theme's surface behind the frame shows through. Unlayered, so this wins over
+ * the UI package's base rule that paints a page's body.
+ */
+html,
+body,
+#root {
+  height: 100%;
+}
+html,
+body {
+  background: transparent;
+}

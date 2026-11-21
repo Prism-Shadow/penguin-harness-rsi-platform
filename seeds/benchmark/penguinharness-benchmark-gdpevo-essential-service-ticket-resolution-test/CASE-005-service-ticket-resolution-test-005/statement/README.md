@@ -1,0 +1,39 @@
+# Service Ticket Resolution: test question 005
+
+- Upstream: https://github.com/Prism-Shadow/GDPevo
+
+You are a support QA analyst auditing proposed CRM updates before they are posted.
+
+Use the shared support console API at `<TASK_ENV_BASE_URL>`. The proposed updates are in `payloads/proposed_updates.json`. Decide whether each proposal should be accepted; when it should not, provide the corrected status or action, corrected team, reason code, and the required evidence/package audit fields from the template.
+
+Return only JSON that conforms to `payloads/answer_template.json`.
+
+## How this case is run
+
+Set `ADAPTER_DIR` to the absolute path of the [shared PenguinHarness adapter](https://github.com/Prism-Shadow/penguin-harness-benchmark/tree/8a507af0329fed8f9a1baf44d1364b438340c78a/agents) in its pinned checkout.
+
+This is a Harbor task, run in Docker with Harbor 0.23.0 and the PenguinHarness
+adapter. Read the [run rules](https://github.com/Prism-Shadow/gdpevo-essential/blob/cf7e729109e9bd431fcb561075250f950ff84cc6/README.md#running-a-task-for-agents)
+and [scenario instructions](https://github.com/Prism-Shadow/gdpevo-essential/blob/cf7e729109e9bd431fcb561075250f950ff84cc6/penguinharness-benchmark-gdpevo-essential-service-ticket-resolution-test/README.md). Task files are at
+[service-ticket-resolution-test-005](https://github.com/Prism-Shadow/gdpevo-essential/tree/cf7e729109e9bd431fcb561075250f950ff84cc6/penguinharness-benchmark-gdpevo-essential-service-ticket-resolution-test/tasks/service-ticket-resolution-test-005).
+Run from a checkout of commit `cf7e729109e9bd431fcb561075250f950ff84cc6`, the same commit as the paired Train package:
+
+```bash
+export PYTHONPATH="$ADAPTER_DIR"
+uvx --from harbor==0.23.0 harbor run -p penguinharness-benchmark-gdpevo-essential-service-ticket-resolution-test/tasks -i service-ticket-resolution-test-005 \
+  -a penguin_agent:PenguinAgent -m <provider>/<model_id> \
+  --ak thinking=<level> --ak penguin_version=<penguin-version> \
+  --ak agent_state_tar=<absolute-frozen-state.tar.gz> \
+  --ak run_timeout=4h --ak max_turns=-1 \
+  --allow-agent-host <model-provider-api-host> \
+  --agent-setup-timeout-multiplier 2.5 -k 1 -n 1 \
+  --job-name <unique-test-job> -o <jobs-dir> -y
+```
+
+Use a fresh container and Session for this question, from the same frozen State
+for every test repetition. The adapter supplies the bound prompt; the container's
+payloads are in `/app/input/`. Write `/app/answer.json`.
+The solving budget is four hours with no turn limit. Only the model provider's API
+host is allowed on the network; the business API is local to the container.
+The training judge is disabled. The verifier scores the answer after the Agent exits.
+Report Train and Test separately; count this trial's cost, tokens and elapsed time once.
