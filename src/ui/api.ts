@@ -7,22 +7,24 @@
  * `ApiError` with the status, the code and the details; a request that never reached the server is
  * `network_error`.
  *
- * A copy of a Benchmark that only another machine holds is read through the host's machine proxy:
- * the same `/api/...` path under `/server/<machineId>` (`apiUrl`).
+ * An admin's lists are asked of this server and of each machine apart (`?machine=<id>`, which this
+ * plugin's route reads through the host's machine client), so the page shows each answer as it
+ * lands. A case's files and a package of a copy only another machine holds are read through the
+ * host's machine proxy: the same `/api/...` path under `/server/<machineId>` (`apiUrl`).
  */
 import type {
   ApprovalMode,
   BenchmarkArchiveImportRequest,
   BenchmarkArchiveImportResponse,
+  BenchmarkCasesResponse,
   BenchmarkCreateRequest,
   BenchmarkCreateResponse,
+  BenchmarksResponse,
   CaseFilesResponse,
   CaseMaterial,
   TaskPreviewResponse,
   TaskStartResponse,
   TasksResponse,
-  WorkbenchBenchmarksResponse,
-  WorkbenchCasesResponse,
   WorkbenchContext,
   WorkbenchTaskRequest,
 } from "../api";
@@ -114,8 +116,13 @@ export function projectApi(projectId: string) {
   const one = (benchmarkId: string) => `${benchmarks}/${enc(benchmarkId)}`;
   const caseFiles = (benchmarkId: string, caseId: string, material: CaseMaterial) =>
     `${one(benchmarkId)}/cases/${enc(caseId)}${material === "rubric" ? "/rubric" : ""}/files`;
+  /** `path`, asking `machineId`'s copy instead of this server's (null). */
+  const of = (path: string, machineId: string | null) =>
+    machineId === null ? path : `${path}?machine=${enc(machineId)}`;
   return {
-    listBenchmarks: () => call<WorkbenchBenchmarksResponse>("GET", benchmarks),
+    /** This server's Benchmarks (null), or one machine's. */
+    listBenchmarks: (machineId: string | null = null) =>
+      call<BenchmarksResponse>("GET", of(benchmarks, machineId)),
     context: () => call<WorkbenchContext>("GET", `${benchmarks}/context`),
     createBenchmark: (body: BenchmarkCreateRequest) =>
       call<BenchmarkCreateResponse>("POST", benchmarks, body),
@@ -125,8 +132,9 @@ export function projectApi(projectId: string) {
     /** The package download, from the server holding the copy (null: this server). */
     archiveUrl: (benchmarkId: string, machineId: string | null) =>
       apiUrl(`${one(benchmarkId)}/archive`, machineId),
-    cases: (benchmarkId: string) =>
-      call<WorkbenchCasesResponse>("GET", `${one(benchmarkId)}/cases`),
+    /** A Benchmark's cases in this server's copy (null), or in one machine's. */
+    cases: (benchmarkId: string, machineId: string | null = null) =>
+      call<BenchmarkCasesResponse>("GET", of(`${one(benchmarkId)}/cases`, machineId)),
     caseFiles: (
       benchmarkId: string,
       caseId: string,

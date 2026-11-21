@@ -8,6 +8,7 @@
   },
   "include": [
     "src/api.ts",
+    "src/merge.ts",
     "src/ui",
     "test/ui",
     "vite.config.ts",

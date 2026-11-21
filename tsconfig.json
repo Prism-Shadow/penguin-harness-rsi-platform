@@ -6,6 +6,7 @@
   "include": [
     "src/index.ts",
     "src/api.ts",
+    "src/merge.ts",
     "src/server",
     "src/format",
     "test/format",

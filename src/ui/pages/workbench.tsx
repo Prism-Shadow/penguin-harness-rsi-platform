@@ -1,20 +1,22 @@
 /**
  * The workbench for one Project: it reads the Project's view (`…/benchmarks/context`: the viewer's
- * role, the Agents, the models, the toolkits, the machines), the viewer's currency and the merged
- * Benchmark list, and shows the list or one Benchmark by where the page is. The list is read again
- * whenever the page moves between the two — what is on screen stays until the new answer lands —
- * and after anything the page did that changes it. A Project switch mounts a new workbench, so
- * nothing of the previous Project's carries over.
+ * role, the Agents, the models, the toolkits, the machines), the viewer's currency and the
+ * Benchmark list — this server's and, for an admin, each machine's, merged as they land
+ * (../sources.ts) — and shows the list or one Benchmark by where the page is. The list is read
+ * again whenever the page moves between the two — what is on screen stays until the new answers
+ * land — and after anything the page did that changes it. A Project switch mounts a new workbench,
+ * so nothing of the previous Project's carries over.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, PageFrame } from "@prismshadow/penguin-ui";
-import type { WorkbenchBenchmarksResponse, WorkbenchContext, WorkbenchTask } from "../../api";
+import type { WorkbenchContext, WorkbenchTask } from "../../api";
 import { getPrefs, projectApi } from "../api";
 import { postNavigate } from "../bridge";
 import { WorkbenchCtx, useStrings, type WorkbenchValue } from "../context";
 import type { Currency } from "../format";
 import type { Locale } from "../frame-facts";
 import type { InnerLocation } from "../router";
+import { useBenchmarkSources } from "../sources";
 import { DetailPage } from "./detail-page";
 import { FailureLine, errorText } from "./failure";
 import { CardSkeletons, ListPage } from "./list-page";
@@ -34,8 +36,6 @@ export function Workbench({
   const [contextError, setContextError] = useState<unknown>(null);
   const [contextKey, setContextKey] = useState(0);
   const [currency, setCurrency] = useState<Currency>("USD");
-  const [listed, setListed] = useState<WorkbenchBenchmarksResponse | null>(null);
-  const [listError, setListError] = useState<unknown>(null);
   const [listKey, setListKey] = useState(0);
   const [lastStarted, setLastStarted] = useState<WorkbenchTask | null>(null);
   const [tasksKey, setTasksKey] = useState(0);
@@ -73,22 +73,15 @@ export function Workbench({
     };
   }, []);
 
-  useEffect(() => {
-    let live = true;
-    api.listBenchmarks().then(
-      (next) => {
-        if (!live) return;
-        setListed(next);
-        setListError(null);
-      },
-      (e: unknown) => {
-        if (live) setListError(e);
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [api, route.benchmarkId, listKey]);
+  const machineIds = useMemo(
+    () => (context?.machines ?? []).map((machine) => machine.machineId),
+    [context],
+  );
+  const { listed, error: listError } = useBenchmarkSources(
+    api,
+    machineIds,
+    `${route.benchmarkId ?? ""}|${listKey}`,
+  );
 
   const reloadList = useCallback(() => setListKey((n) => n + 1), []);
   const reloadContext = useCallback(() => setContextKey((n) => n + 1), []);

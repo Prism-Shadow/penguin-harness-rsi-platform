@@ -4,14 +4,13 @@
  * moved from the harness unchanged (packages/server http/routes/benchmarks.ts); the page's own
  * reads and its tasks are new (PRFC-0036, "Contributions"):
  *
- *   GET    /                                           the Benchmarks (any member; an admin's are
- *                                                      every machine's, merged; `?local=1` this
- *                                                      server's alone, which is what a hub asks)
+ *   GET    /                                           this server's Benchmarks (any member);
+ *                                                      `?machine=<id>` one machine's (an admin)
  *   POST   /                                           create one by hand (owner)
  *   DELETE /:benchmarkId                               remove one whole (owner)
  *   POST   /archive                                    import a package from a zip (any member)
  *   GET    /:benchmarkId/archive                       export the package (any member)
- *   GET    /:benchmarkId/cases                         its cases (an admin's: every copy's)
+ *   GET    /:benchmarkId/cases                         its cases here; `?machine=<id>` a machine's
  *   GET    /:benchmarkId/cases/:caseId/files           a case's statement files
  *   GET    /:benchmarkId/cases/:caseId/files/content
  *   GET    /:benchmarkId/cases/:caseId/rubric/files    a case's rubric files
@@ -21,20 +20,22 @@
  *                                                      person); `?preview=1` answers the prompt
  *   GET    /tasks?benchmarkId=                         the tasks started here, newest first
  *
- * A refusal answers `{ error: { code, message, details? } }`, as the host's own routes do.
+ * An admin's page merges this server's list with each machine's as the answers land, so no
+ * machine holds back this server's rows (../merge.ts). A refusal answers
+ * `{ error: { code, message, details? } }`, as the host's own routes do.
  */
 import { Hono, type Context } from "hono";
 import type {
   BenchmarkArchiveGitOrigin,
   BenchmarkArchiveImportResponse,
+  BenchmarkCasesResponse,
   BenchmarkCreateResponse,
+  BenchmarksResponse,
   CaseMaterial,
   TaskPreviewResponse,
   TaskStartResponse,
   TasksResponse,
   WorkbenchAgent,
-  WorkbenchBenchmarksResponse,
-  WorkbenchCasesResponse,
   WorkbenchContext,
   WorkbenchMethod,
 } from "../api.js";
@@ -49,13 +50,7 @@ import type {
   ProjectMachines,
   ProjectModels,
 } from "./host.js";
-import {
-  askMachines,
-  benchmarksAnswer,
-  casesAnswer,
-  mergeBenchmarkCases,
-  mergeBenchmarks,
-} from "./merge.js";
+import { askMachine, benchmarksAnswer, casesAnswer } from "./merge.js";
 import { pluginShipping, rsiMethods } from "./methods.js";
 import { benchmarkFolder, buildRequest } from "./prompts.js";
 import type { BenchmarkCaseInput, BenchmarkStore } from "./service.js";
@@ -194,6 +189,40 @@ function projectOf(c: C, deps: WorkbenchRouteDeps): { projectId: string; role: s
   return { projectId, role };
 }
 
+/**
+ * One machine's answer to `GET path` of its own API, for an admin (as the host's machine proxy):
+ * 403 for anyone else, 404 for a machine the Project does not use, 502 when it gives no answer
+ * within the deadline (not connected, or anything but the list it was asked for).
+ */
+async function fromMachine<T>(
+  c: C,
+  deps: WorkbenchRouteDeps,
+  projectId: string,
+  machineId: string,
+  path: string,
+  accept: (body: unknown) => T | null,
+): Promise<T> {
+  if (!c.var.user.isAdmin) {
+    throw new WorkbenchError(403, "admin_required", "Only an admin can read a machine's copies.");
+  }
+  const machines = await deps.machines.projectApis(projectId);
+  const machine = machines.find((m) => m.machineId === machineId);
+  if (machine === undefined) {
+    throw new WorkbenchError(404, "machine_not_found", "The Project uses no such machine.");
+  }
+  const answer = await askMachine(machine.api, path, accept);
+  if (answer === null) {
+    throw new WorkbenchError(
+      502,
+      "machine_unreachable",
+      `Machine ${machine.alias} did not answer; its copies are not listed.`,
+      undefined,
+      { machineId },
+    );
+  }
+  return answer;
+}
+
 /** The RSI methods the library offers; none while it cannot be read. */
 function methodsOf(deps: WorkbenchRouteDeps): WorkbenchMethod[] {
   try {
@@ -268,31 +297,20 @@ export function workbenchRoutes(deps: WorkbenchRouteDeps): Hono<RouteEnv> {
     );
   });
 
+  // This server's list; `?local=1` (what an older hub asks) is the same answer.
   app.get("/", async (c) => {
     const { projectId } = projectOf(c, deps);
-    const here = await deps.store.list(projectId);
-    // A hub asking this server, or a page of a server with no machines: this server's alone.
-    if (c.req.query("local") === "1") return c.json(here);
-    if (!c.var.user.isAdmin) {
-      return c.json({
-        benchmarks: mergeBenchmarks([{ machineId: null, benchmarks: here.benchmarks }]),
-        ...(here.dir !== undefined ? { dir: here.dir } : {}),
-      } satisfies WorkbenchBenchmarksResponse);
-    }
-    const machines = await deps.machines.projectApis(projectId);
-    const { answers, unreachable } = await askMachines(
-      machines,
+    const machineId = c.req.query("machine");
+    if (machineId === undefined) return c.json(await deps.store.list(projectId));
+    const benchmarks = await fromMachine(
+      c,
+      deps,
+      projectId,
+      machineId,
       `/api/projects/${encodeURIComponent(projectId)}/benchmarks?local=1`,
       benchmarksAnswer,
     );
-    return c.json({
-      benchmarks: mergeBenchmarks([
-        { machineId: null, benchmarks: here.benchmarks },
-        ...answers.map(({ machineId, answer }) => ({ machineId, benchmarks: answer })),
-      ]),
-      ...(here.dir !== undefined ? { dir: here.dir } : {}),
-      ...(unreachable.length > 0 ? { unreachable } : {}),
-    } satisfies WorkbenchBenchmarksResponse);
+    return c.json({ benchmarks: [...benchmarks] } satisfies BenchmarksResponse);
   });
 
   app.post("/", async (c) => {
@@ -515,25 +533,17 @@ export function workbenchRoutes(deps: WorkbenchRouteDeps): Hono<RouteEnv> {
   app.get("/:benchmarkId/cases", async (c) => {
     const { projectId } = projectOf(c, deps);
     const benchmarkId = requireValidId(c, "benchmarkId");
-    const here = await deps.store.listCases(projectId, benchmarkId);
-    if (c.req.query("local") === "1") return c.json(here);
-    if (!c.var.user.isAdmin) {
-      return c.json({
-        cases: mergeBenchmarkCases([{ machineId: null, cases: here.cases }]),
-      } satisfies WorkbenchCasesResponse);
-    }
-    const machines = await deps.machines.projectApis(projectId);
-    const { answers } = await askMachines(
-      machines,
+    const machineId = c.req.query("machine");
+    if (machineId === undefined) return c.json(await deps.store.listCases(projectId, benchmarkId));
+    const cases = await fromMachine(
+      c,
+      deps,
+      projectId,
+      machineId,
       `/api/projects/${encodeURIComponent(projectId)}/benchmarks/${encodeURIComponent(benchmarkId)}/cases?local=1`,
       casesAnswer,
     );
-    return c.json({
-      cases: mergeBenchmarkCases([
-        { machineId: null, cases: here.cases },
-        ...answers.map(({ machineId, answer }) => ({ machineId, cases: answer })),
-      ]),
-    } satisfies WorkbenchCasesResponse);
+    return c.json({ cases: [...cases] } satisfies BenchmarkCasesResponse);
   });
 
   app.get("/:benchmarkId/cases/:caseId/files", listCaseFiles(deps, "statement"));

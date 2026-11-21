@@ -47,8 +47,8 @@ export function apiError(
 }
 
 /**
- * A server for one or more Projects: answers by `METHOD path`, records every request, and answers
- * 404 for anything it was not told about.
+ * A server for one or more Projects: answers by `METHOD path` (an answer may read the query),
+ * records every request, and answers 404 for anything it was not told about.
  */
 export class FakeServer {
   readonly requests: SeenRequest[] = [];
@@ -98,29 +98,39 @@ export class FakeServer {
 
 const base = (projectId: string) => `/api/projects/${projectId}/benchmarks`;
 
-/** A Project's routes: the context, the merged list, no tasks, the prefs and a prompt preview. */
+/** What one machine answers for its list: its Benchmarks, a response, or one still to come. */
+export type MachineList = MergedBenchmark[] | Response | (() => Promise<Response>);
+
+/**
+ * A Project's routes: the context, this server's list and each machine's (`?machine=<id>`), no
+ * tasks, the prefs and a prompt preview.
+ */
 export function serveProject(
   server: FakeServer,
   {
     projectId = PROJECT_ID,
     context = CONTEXT,
     benchmarks = [],
-    unreachable,
+    machines = {},
     tasks = [],
   }: {
     projectId?: string;
     context?: WorkbenchContext;
     benchmarks?: MergedBenchmark[];
-    unreachable?: string[];
+    machines?: Record<string, MachineList>;
     tasks?: WorkbenchTask[];
   } = {},
 ): FakeServer {
   return server
     .on("GET", "/api/me/prefs", { prefs: {} })
     .on("GET", `${base(projectId)}/context`, { ...context, projectId })
-    .on("GET", base(projectId), {
-      benchmarks,
-      ...(unreachable !== undefined ? { unreachable } : {}),
+    .on("GET", base(projectId), (request: SeenRequest) => {
+      const machineId = request.query.get("machine");
+      if (machineId === null) return json({ benchmarks });
+      const answer = machines[machineId];
+      if (answer === undefined) return apiError(404, "machine_not_found");
+      if (typeof answer === "function") return answer();
+      return answer instanceof Response ? answer.clone() : json({ benchmarks: answer });
     })
     .on("GET", `${base(projectId)}/tasks`, { tasks })
     .on("POST", `${base(projectId)}/tasks`, (request: SeenRequest) =>

@@ -33,6 +33,7 @@ import {
 } from "@prismshadow/penguin-ui";
 import type { AskCaseFacts, MergedBenchmark, MergedCase, MergedEvaluation } from "../../api";
 import { useStrings, useWorkbench } from "../context";
+import { useBenchmarkCases } from "../sources";
 import { formatDateTime, formatMoney, formatScore, humanizeDuration } from "../format";
 import {
   benchmarkDescription,
@@ -301,39 +302,23 @@ export function BenchmarkDetail({ benchmark: bm }: { benchmark: MergedBenchmark 
   const s = useStrings();
   const wb = useWorkbench();
   const description = benchmarkDescription(bm, wb.locale);
-  const [cases, setCases] = useState<MergedCase[] | null>(null);
-  const [caseError, setCaseError] = useState<string | null>(null);
+  // Asked of the servers holding a copy — this server first when it holds one — and merged as
+  // each answers; one more machine's copy asks again with the cases kept.
+  const casesView = useBenchmarkCases(wb.api, bm.id, bm.machineIds);
+  const cases = casesView.cases;
+  const caseError = casesView.error === null ? null : errorText(casesView.error, s);
   const [openCaseId, setOpenCaseId] = useState<string | null>(null);
   /** Which evaluation's dialog is open, as a position in scoreboard order. */
   const [openEvaluation, setOpenEvaluation] = useState<number | null>(null);
   /** The case whose Ask AI is open; kept as an id so it cannot outlive its case dialog. */
   const [askingCaseId, setAskingCaseId] = useState<string | null>(null);
-  const machinesKey = bm.machineIds.map((m) => m ?? "").join(",");
 
-  // Another Benchmark starts over; one more machine's copy asks again with the cases kept.
+  // Another Benchmark starts over.
   useEffect(() => {
-    setCases(null);
-    setCaseError(null);
     setOpenCaseId(null);
     setOpenEvaluation(null);
     setAskingCaseId(null);
   }, [wb.projectId, bm.id]);
-  useEffect(() => {
-    let live = true;
-    wb.api.cases(bm.id).then(
-      (res) => {
-        if (!live) return;
-        setCases(res.cases);
-        setCaseError(null);
-      },
-      (e: unknown) => {
-        if (live) setCaseError(errorText(e, s));
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [wb.api, bm.id, machinesKey, s]);
 
   // The scoreboard's append order is the evaluation sequence; the table shows it newest first.
   const evaluations = bm.evaluations;

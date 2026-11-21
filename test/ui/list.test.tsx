@@ -8,7 +8,9 @@
  *   card offers delete; an owner gets both.
  * - Given `?agentId=` in the location, only the Benchmarks that tested that Agent are listed, and
  *   Show all moves back to the whole list.
- * - Given machines that did not answer the merged read, one quiet line names them by label.
+ * - Given an admin with machines, this server's Benchmarks are listed the moment it answers while a
+ *   machine's answer is still out (a quiet line names that machine), and its copies join when it
+ *   lands; a machine that gives no answer is named in one quiet line by label.
  * - Given create and import tasks, the newest few are listed under the cards, a deleted
  *   conversation's task left out.
  * - When the owner deletes a Benchmark and confirms, it is deleted and the list is read again.
@@ -18,6 +20,7 @@ import { zh } from "../../src/ui/strings";
 import {
   CONTEXT,
   FakeServer,
+  apiError,
   benchmark,
   button,
   card,
@@ -26,6 +29,7 @@ import {
   evaluation,
   fakeHost,
   hasButton,
+  json,
   lastPosted,
   mountApp,
   serveProject,
@@ -128,16 +132,38 @@ describe("the list of Benchmarks", () => {
     expect(lastPosted(host, "penguin:location")).toEqual({ type: "penguin:location", at: "/" });
   });
 
-  it("names the machines that did not answer in one quiet line", async () => {
+  it("lists this server's Benchmarks without waiting for a machine, whose copies join when it answers", async () => {
+    let answerMachine: (response: Response) => void = () => {};
+    const machineAnswer = new Promise<Response>((resolve) => {
+      answerMachine = resolve;
+    });
     serveProject(new FakeServer(), {
       benchmarks: [benchmark()],
-      unreachable: ["m-1"],
+      machines: { "m-1": () => machineAnswer },
       context: { ...CONTEXT, isAdmin: true, machines: [{ machineId: "m-1", label: "gpu-box" }] },
     }).install();
     await mountApp();
-    await waitFor(() => shows("Sec A"), "the list");
 
-    expect(shows(zh.machines.unreachable("gpu-box"))).toBe(true);
+    await waitFor(() => shows("Sec A"), "this server's list");
+    expect(shows(zh.machines.pending("gpu-box"))).toBe(true);
+    expect(shows("Machine only")).toBe(false);
+
+    answerMachine(json({ benchmarks: [benchmark({ id: "far", title: "Machine only" })] }));
+    await waitFor(() => shows("Machine only"), "the machine's copies");
+    expect(shows("Sec A")).toBe(true);
+    expect(shows(zh.machines.pending("gpu-box"))).toBe(false);
+  });
+
+  it("names the machines that did not answer in one quiet line", async () => {
+    serveProject(new FakeServer(), {
+      benchmarks: [benchmark()],
+      machines: { "m-1": apiError(502, "machine_unreachable") },
+      context: { ...CONTEXT, isAdmin: true, machines: [{ machineId: "m-1", label: "gpu-box" }] },
+    }).install();
+    await mountApp();
+    await waitFor(() => shows(zh.machines.unreachable("gpu-box")), "the quiet line");
+
+    expect(shows("Sec A")).toBe(true);
   });
 
   it("lists the newest create and import tasks under the cards, leaving out a deleted one", async () => {

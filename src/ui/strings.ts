@@ -123,6 +123,8 @@ export const zh = {
   machines: {
     onMachine: (name: string, machine: string): string => `${name} [SSH: ${machine}]`,
     machineTag: (machine: string): string => `[SSH: ${machine}]`,
+    /** The quiet line above the list while a machine's copies are still being read. */
+    pending: (labels: string): string => `正在读取这些机器上的副本，读到后会加入列表：${labels}`,
     /** The quiet line above the list when a machine did not answer the merged read. */
     unreachable: (labels: string): string => `这些机器没有应答，它们上的副本暂未列出：${labels}`,
   },
@@ -530,6 +532,8 @@ export const en: Strings = {
   machines: {
     onMachine: (name: string, machine: string): string => `${name} [SSH: ${machine}]`,
     machineTag: (machine: string): string => `[SSH: ${machine}]`,
+    pending: (labels: string): string =>
+      `Still reading the copies on these machines; they join the list when they arrive: ${labels}`,
     unreachable: (labels: string): string =>
       `These machines did not answer, so their copies are not listed yet: ${labels}`,
   },

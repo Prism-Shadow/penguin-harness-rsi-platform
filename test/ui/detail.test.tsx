@@ -47,9 +47,15 @@ afterEach(async () => {
 const FOLDER =
   "https://github.com/Prism-Shadow/penguin-harness-benchmark/tree/c12d65bc20beb5130ed57b3b7983c62d497b7d2f/packages/penguinharness-benchmark-sec-a";
 
-async function openPage(subject: MergedBenchmark, extra: (server: FakeServer) => void = () => {}) {
+/** Opens `subject`'s page, its copy held by `copies` (null: this server; else a machine). */
+async function openPage(
+  subject: MergedBenchmark,
+  extra: (server: FakeServer) => void = () => {},
+  copies: (string | null)[] = [null],
+) {
   const server = serveProject(new FakeServer(), {
-    benchmarks: [subject],
+    benchmarks: copies.includes(null) ? [subject] : [],
+    machines: { "m-1": copies.includes("m-1") ? [subject] : [] },
     context: { ...CONTEXT, isAdmin: true, machines: [{ machineId: "m-1", label: "gpu-box" }] },
   });
   server.on("GET", `/api/projects/proj/benchmarks/${subject.id}/cases`, { cases: [] });
@@ -90,7 +96,7 @@ describe("a Benchmark's page", () => {
   });
 
   it("exports a copy only a machine holds through the host's machine proxy", async () => {
-    await openPage(benchmark({ machineIds: ["m-1"] }));
+    await openPage(benchmark(), () => {}, ["m-1"]);
 
     expect(button(zh.benchmark.exportBenchmark).getAttribute("href")).toBe(
       "/server/m-1/api/projects/proj/benchmarks/sec-a/archive",
@@ -128,20 +134,29 @@ describe("a Benchmark's page", () => {
   });
 
   it("reads a case's files from the machine that listed it, through the proxy", async () => {
-    const { server } = await openPage(benchmark({ machineIds: [null, "m-1"] }), (s) => {
-      s.on("GET", "/api/projects/proj/benchmarks/sec-a/cases", {
-        cases: [{ id: "CASE-001-report", title: "Conflicting sources", machineId: "m-1" }],
-      });
-      s.on("GET", "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/files", {
-        path: "",
-        entries: [],
-      });
-      s.on(
-        "GET",
-        "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/rubric/files",
-        { path: "", entries: [] },
-      );
-    });
+    const { server } = await openPage(
+      benchmark(),
+      (s) => {
+        s.on("GET", "/api/projects/proj/benchmarks/sec-a/cases", (request) =>
+          json({
+            cases:
+              request.query.get("machine") === "m-1"
+                ? [{ id: "CASE-001-report", title: "Conflicting sources" }]
+                : [],
+          }),
+        );
+        s.on("GET", "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/files", {
+          path: "",
+          entries: [],
+        });
+        s.on(
+          "GET",
+          "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/rubric/files",
+          { path: "", entries: [] },
+        );
+      },
+      [null, "m-1"],
+    );
     await waitFor(() => shows("Conflicting sources"), "the case list");
 
     await click(button(`Conflicting sources${zh.benchmark.viewCase}`));

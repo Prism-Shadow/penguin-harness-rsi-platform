@@ -15,7 +15,7 @@ import { Hono } from "hono";
 import { stringify as stringifyToml } from "smol-toml";
 import plugin, { RsiWorkbenchApp, RsiWorkbenchLibrary } from "../../src/index.js";
 import type { RouteEnv } from "../../src/server/routes.js";
-import type { TaskStartResponse, WorkbenchBenchmarksResponse } from "../../src/api.js";
+import type { BenchmarksResponse, TaskStartResponse } from "../../src/api.js";
 import { FakeCaseFiles, PREFIX, appDataPaths, tempRoot } from "../helpers/host.js";
 
 describe("the plugin package", () => {
@@ -72,7 +72,7 @@ describe("the plugin package", () => {
     );
     const listed = (await (
       await http.request("/api/projects/p1/benchmarks")
-    ).json()) as WorkbenchBenchmarksResponse;
+    ).json()) as BenchmarksResponse;
     expect(listed.dir).toBe(dataDir);
     expect(listed.benchmarks.map((b) => b.id)).toEqual(["sec-a"]);
 

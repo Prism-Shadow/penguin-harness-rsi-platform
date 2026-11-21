@@ -194,7 +194,8 @@ export interface CaseFilesResponse {
 }
 
 // ---------------------------------------------------------------------------
-// The merged list (GET …/benchmarks for an admin with machines)
+// The merged list: this server's answer and each machine's (an admin's `?machine=<id>`), as the
+// page folds them (src/merge.ts)
 // ---------------------------------------------------------------------------
 
 /** An evaluation, and the machine whose scoreboard recorded it (null: this server). */
@@ -210,29 +211,21 @@ export interface MergedBenchmark extends Omit<BenchmarkSummary, "evaluations"> {
   machineIds: (string | null)[];
 }
 
-/** A case, and the server whose copy its files are read from (null: this server). */
+/**
+ * A case, and the server whose copy its files are read from (null: this server; another machine's
+ * through the host's machine proxy, `/server/<machineId>/api/…`).
+ */
 export type MergedCase = BenchmarkCaseSummary & { machineId: string | null };
 
-/**
- * GET …/benchmarks/:benchmarkId/cases as the workbench page reads it: for an admin, the union of
- * the cases every copy holds, this server's first, the first copy winning a shared id. A case's
- * files are read from the server it is recorded against (the host's machine proxy,
- * `/server/<machineId>/api/…`, for another machine).
- */
-export interface WorkbenchCasesResponse {
-  cases: MergedCase[];
-}
-
-/**
- * GET /api/projects/:projectId/benchmarks as the workbench page reads it. Every field of
- * `BenchmarksResponse` is there, so an older client still reads it; `benchmarks` entries carry
- * the merged fields too.
- */
+/** The Project's Benchmarks as the workbench page shows them, merged as the answers land. */
 export interface WorkbenchBenchmarksResponse {
   benchmarks: MergedBenchmark[];
+  /** This server's Benchmark folder, once it has answered. */
   dir?: string;
-  /** Machines that were asked and did not answer in time; their copies are missing. */
+  /** Machines that gave no answer; their copies are missing. */
   unreachable?: string[];
+  /** Machines asked whose answer has not landed yet; their copies join when it does. */
+  pending?: string[];
 }
 
 // ---------------------------------------------------------------------------

@@ -27,7 +27,7 @@ import { useStrings, useWorkbench } from "../context";
 import { benchmarkTitle } from "../metrics";
 import { BenchmarkDetail } from "./benchmark-detail";
 import { FailureLine, errorText } from "./failure";
-import { UnreachableNotice } from "./list-page";
+import { MachinesNotice } from "./list-page";
 import { StartedNotice, TasksSection, useTasks } from "./tasks";
 import { UseDialog } from "./use-dialog";
 
@@ -174,7 +174,8 @@ export function DetailPage({
   const tasks = useTasks(benchmarkId, onChanged);
   const benchmark: MergedBenchmark | null =
     listed?.benchmarks.find((b) => b.id === benchmarkId) ?? null;
-  const missing = benchmark === null && listed !== null;
+  // Not found only once no machine is still being read: a copy only a machine holds joins late.
+  const missing = benchmark === null && listed !== null && (listed.pending ?? []).length === 0;
   const masked = benchmark !== null && benchmark.status !== "published";
   const failed = benchmark !== null && benchmark.status === "failed";
   const onlyMachine =
@@ -242,7 +243,7 @@ export function DetailPage({
           : {})}
       />
       <StartedNotice />
-      <UnreachableNotice machineIds={listed?.unreachable} />
+      <MachinesNotice listed={listed} />
       {body}
       <TasksSection title={s.tasks.title} tasks={tasks} className="mt-6" />
 

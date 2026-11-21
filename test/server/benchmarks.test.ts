@@ -7,9 +7,8 @@
  * - When a member lists the Benchmarks, each manifest's title, description, runs, status (literal
  *   draft and failed are themselves, anything else is published), version and origin are read; a
  *   Benchmark that never ran lists, while a directory without a manifest, a staging copy and the
- *   Harbor checkouts do not; an empty folder lists none and names itself. The page's list carries
- *   the same Benchmarks with this server as their only machine; `?local=1` is this server's own
- *   answer, as a hub asks for it.
+ *   Harbor checkouts do not; an empty folder lists none and names itself. `?local=1`, as an older
+ *   hub asks for it, is the same answer.
  * - When a manifest predates `id`, `version` and `origin`, the Benchmark lists as its file says
  *   and listing writes nothing; when it says something unusable, the Benchmark lists under its
  *   directory name as failed, with the reason; when the filesystem cannot read it, the request
@@ -42,8 +41,6 @@ import type {
   BenchmarkCreateResponse,
   BenchmarksResponse,
   CaseFilesResponse,
-  WorkbenchBenchmarksResponse,
-  WorkbenchCasesResponse,
 } from "../../src/api.js";
 import { entriesOf, exists, write } from "../helpers/files.js";
 import { canCreateSymlink, createTestHost, type TestHost } from "../helpers/host.js";
@@ -314,20 +311,10 @@ describe("benchmarks api", () => {
       ]);
     });
 
-    it("the page's list carries the same Benchmarks, with this server as the only machine of each and of every evaluation", async () => {
+    it("answers a hub's `?local=1` read with the same list", async () => {
       await writeSweBench(dir);
-      const own = await local();
 
-      const page = (await (await member.get(base)).json()) as WorkbenchBenchmarksResponse;
-
-      expect(page).toEqual({
-        dir,
-        benchmarks: own.benchmarks.map((b) => ({
-          ...b,
-          machineIds: [null],
-          evaluations: b.evaluations.map((e) => ({ ...e, machineId: null })),
-        })),
-      });
+      expect(await (await member.get(base)).json()).toEqual(await local());
     });
 
     it("does not migrate or backfill legacy scoreboard entries, and an outsider cannot list", async () => {
@@ -524,7 +511,7 @@ describe("benchmarks api", () => {
   });
 
   describe("cases", () => {
-    it("a case lists under its statement's title, never its rubric's text, from this server and on the page", async () => {
+    it("a case lists under its statement's title, never its rubric's text, with or without `?local=1`", async () => {
       await writeSweBench(dir);
 
       const own = (await (
@@ -532,7 +519,7 @@ describe("benchmarks api", () => {
       ).json()) as BenchmarkCasesResponse;
       const page = (await (
         await member.get(`${base}/swe-bench-v2/cases`)
-      ).json()) as WorkbenchCasesResponse;
+      ).json()) as BenchmarkCasesResponse;
 
       expect(own).toEqual({
         cases: [
@@ -540,7 +527,7 @@ describe("benchmarks api", () => {
           { id: "CASE-002-web-task", title: "Web task" },
         ],
       });
-      expect(page).toEqual({ cases: own.cases.map((c) => ({ ...c, machineId: null })) });
+      expect(page).toEqual(own);
       expect(JSON.stringify([own, page])).not.toContain("PRIVATE GOLD");
     });
 

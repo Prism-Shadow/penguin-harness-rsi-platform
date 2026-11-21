@@ -124,16 +124,33 @@ export function CardSkeletons({ rows }: { rows: number }) {
   );
 }
 
-/** The quiet line naming the machines whose copies are missing from the merged list. */
-export function UnreachableNotice({ machineIds }: { machineIds: readonly string[] | undefined }) {
+/**
+ * The quiet lines naming the machines whose copies are not in the merged list: those still being
+ * read, whose copies join when they answer, and those that gave no answer.
+ */
+export function MachinesNotice({
+  listed,
+}: {
+  listed: Pick<WorkbenchBenchmarksResponse, "unreachable" | "pending"> | null;
+}) {
   const s = useStrings();
   const wb = useWorkbench();
-  if (machineIds === undefined || machineIds.length === 0) return null;
-  const labels = machineIds.map((id) => wb.machineName(id) ?? id).join(", ");
+  const labels = (ids: readonly string[]) => ids.map((id) => wb.machineName(id) ?? id).join(", ");
+  const pending = listed?.pending ?? [];
+  const unreachable = listed?.unreachable ?? [];
   return (
-    <NoticeStrip tone="neutral" className="mb-3 rounded-md border px-3 py-2 text-xs">
-      {s.machines.unreachable(labels)}
-    </NoticeStrip>
+    <>
+      {pending.length > 0 && (
+        <NoticeStrip tone="neutral" className="mb-3 rounded-md border px-3 py-2 text-xs">
+          {s.machines.pending(labels(pending))}
+        </NoticeStrip>
+      )}
+      {unreachable.length > 0 && (
+        <NoticeStrip tone="neutral" className="mb-3 rounded-md border px-3 py-2 text-xs">
+          {s.machines.unreachable(labels(unreachable))}
+        </NoticeStrip>
+      )}
+    </>
   );
 }
 
@@ -253,7 +270,7 @@ export function ListPage({
         </PageHeader>
 
         <StartedNotice />
-        <UnreachableNotice machineIds={listed?.unreachable} />
+        <MachinesNotice listed={listed} />
 
         {/* What the address filters by, and the way out of it. */}
         {filterAgentId !== null && (
