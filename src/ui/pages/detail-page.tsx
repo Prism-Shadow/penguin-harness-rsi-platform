@@ -31,9 +31,26 @@ import { MachinesNotice } from "./list-page";
 import { StartedNotice, TasksSection, useTasks } from "./tasks";
 import { UseDialog } from "./use-dialog";
 
-/** The Benchmark's folder under the App Data Dir: the Skills' own rule for where it lives. */
-export function benchmarkPath(benchmarkId: string): string {
-  return `agents/system_agent/app/data/benchmark/${benchmarkId}`;
+/**
+ * The Benchmark's folder as its page names it, from the absolute `dir` the server holding the copy
+ * gave: relative to the Project's folder when `dir` lies inside one — the last folder named like
+ * the Project above the Benchmark's own — and whole otherwise. Wherever the host keeps the
+ * Benchmarks (`<project>/benchmarks/`, or the system Agent's app data folder), the label says that
+ * place. A copy listed with no `dir` comes from a harness that still served the Evaluation Center
+ * itself, which kept its Benchmarks in `<project>/benchmarks/`.
+ */
+export function benchmarkFolderLabel(
+  dir: string | undefined,
+  projectId: string,
+  benchmarkId: string,
+): string {
+  if (dir === undefined || dir === "") return `benchmarks/${benchmarkId}`;
+  const sep = dir.includes("\\") && !dir.includes("/") ? "\\" : "/";
+  const parts = dir.replace(/[\\/]+$/, "").split(/[\\/]/);
+  for (let i = parts.length - 2; i >= 0; i--) {
+    if (parts[i] === projectId) return parts.slice(i + 1).join(sep);
+  }
+  return dir;
 }
 
 /**
@@ -104,16 +121,16 @@ export function BenchmarkHeaderFacts({
   exportUrl?: string;
 }) {
   const s = useStrings();
+  const wb = useWorkbench();
   const source = benchmark.origin?.kind === "git" ? webLink(benchmark.origin.url) : null;
+  const folder = benchmarkFolderLabel(benchmark.dir, wb.projectId, benchmark.id);
   return (
     <span className="block min-w-0">
       <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
         <span className="flex min-w-0 items-center gap-1">
-          <span className="min-w-0 truncate font-mono text-xs text-fg-subtle">
-            {benchmarkPath(benchmark.id)}
-          </span>
+          <span className="min-w-0 truncate font-mono text-xs text-fg-subtle">{folder}</span>
           <CopyButton
-            text={benchmark.dir ?? benchmarkPath(benchmark.id)}
+            text={benchmark.dir ?? folder}
             label={s.benchmark.copyPath}
             size="sm"
             className="shrink-0"

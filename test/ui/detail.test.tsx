@@ -1,9 +1,10 @@
 /**
  * One Benchmark's page.
  *
- * - It names the directory the files live in and the version the manifest is at; a copy an Agent
- *   imported from a repository folder links that folder, and a source that is not http(s) is never
- *   rendered as a link.
+ * - It names the directory the files live in — the folder the server gave, relative to the
+ *   Project's folder when inside it — and the version the manifest is at; a copy an Agent imported
+ *   from a repository folder links that folder, and a source that is not http(s) is never rendered
+ *   as a link.
  * - A published Benchmark offers Export, a download of its package from the server holding the
  *   copy — through the host's machine proxy for a copy only a machine holds; a draft offers none.
  * - A Benchmark whose manifest cannot be read shows the notice with the reason in place of the
@@ -17,6 +18,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MergedBenchmark } from "../../src/api";
+import { benchmarkFolderLabel } from "../../src/ui/pages/detail-page";
 import { zh } from "../../src/ui/strings";
 import {
   CONTEXT,
@@ -73,10 +75,15 @@ const links = () => [...document.querySelectorAll("a[href]")].map((a) => a.getAt
 describe("a Benchmark's page", () => {
   it("names the directory and the version, and links the folder an Agent imported it from", async () => {
     await openPage(
-      benchmark({ version: "2026.10.09.2", origin: { kind: "git", url: FOLDER, ref: "c12d65bc" } }),
+      benchmark({
+        dir: "/srv/penguin/proj/benchmarks/sec-a",
+        version: "2026.10.09.2",
+        origin: { kind: "git", url: FOLDER, ref: "c12d65bc" },
+      }),
     );
 
-    expect(shows("agents/system_agent/app/data/benchmark/sec-a")).toBe(true);
+    expect(shows("benchmarks/sec-a")).toBe(true);
+    expect(shows("agents/system_agent/app/data/benchmark/sec-a")).toBe(false);
     expect(shows("v2026.10.09.2")).toBe(true);
     expect(links()).toContain(FOLDER);
   });
@@ -276,3 +283,16 @@ function dateButton(): string {
   if (cell === null) throw new Error("no evaluation row");
   return cell.textContent ?? "";
 }
+
+describe("the folder label", () => {
+  it("is the folder relative to the Project's, wherever the host keeps the Benchmarks", () => {
+    const label = (dir: string | undefined) => benchmarkFolderLabel(dir, "proj", "sec-a");
+    expect(label("/data/proj/benchmarks/sec-a")).toBe("benchmarks/sec-a");
+    expect(
+      label("/home/proj/data/projects/proj/agents/system_agent/app/data/benchmark/sec-a"),
+    ).toBe("agents/system_agent/app/data/benchmark/sec-a");
+    expect(label("C:\\Users\\me\\data\\proj\\benchmarks\\sec-a")).toBe("benchmarks\\sec-a");
+    expect(label("/elsewhere/sec-a")).toBe("/elsewhere/sec-a");
+    expect(label(undefined)).toBe("benchmarks/sec-a");
+  });
+});
