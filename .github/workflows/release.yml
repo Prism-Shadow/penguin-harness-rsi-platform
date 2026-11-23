@@ -80,6 +80,9 @@ jobs:
             cmp "$packed" "$RUNNER_TEMP/download/$asset"
             sha512sum "$RUNNER_TEMP/download/$asset"
           done
+          for packed in "$RUNNER_TEMP/packs/pack-1/"*.tgz; do basename "$packed"; done | sort > "$RUNNER_TEMP/expected-assets"
+          gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | sort > "$RUNNER_TEMP/published-assets"
+          diff -u "$RUNNER_TEMP/expected-assets" "$RUNNER_TEMP/published-assets"
           if [ "$draft" = true ]; then
             gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease --latest=false
           fi
