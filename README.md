@@ -47,7 +47,9 @@ pnpm pack:check       # after build: the static probe, and npm pack twice with e
 
 ## Release
 
-Tag `v<version>` (equal to `package.json`'s version). The release workflow tests, builds, packs twice and compares, attaches the tarball to a GitHub release with the CHANGELOG section, and publishes the same tarball to npm through trusted publishing (the first version is published by hand). Then register the version in [penguin-harness-plugins](https://github.com/Prism-Shadow/penguin-harness-plugins) and raise the pin in PenguinHarness.
+Tag the reviewed commit with `v<version>` to match the release candidate in `package.json`, for example `v0.1.0-rc.1`. The workflow tests and builds the package, compares two independent packs, then downloads the attached tarball and checks its bytes before publishing the GitHub prerelease. Its notes come from the matching CHANGELOG section.
+
+Use the release asset `penguinharness-rsi-workbench-<version>.tgz`. Register its versioned GitHub download URL and SHA-512 integrity in the [plugin index](https://github.com/Prism-Shadow/penguin-harness-plugins) when pinning the built-in workbench in PenguinHarness.
 
 ## License
 

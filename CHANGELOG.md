@@ -2,7 +2,7 @@
 
 Each release's section is the GitHub release's notes. Versions follow semver; the harness pins one exact version.
 
-## [0.1.0] - Unreleased
+## [0.1.0-rc.1] - 2026-11-22
 
 The first version: the harness's Evaluation Center as the external built-in plugin 「自进化工作台」 / Self-Evolution Workbench ([PRFC-0036](https://github.com/Prism-Shadow/penguin-harness-design/pull/503)).
 
