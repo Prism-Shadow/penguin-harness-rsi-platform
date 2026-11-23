@@ -4,6 +4,8 @@
 
 `@penguinharness/rsi-workbench` 是 [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness) 的「自进化工作台」：系统 Agent 的应用，用来构建 Benchmark，并以 Benchmark 测量、改进 Agent。它随 PenguinHarness 内置安装，从应用中心打开，在应用窗口中运行。
 
+平台也维护 `plugins/` 下的 RSI 工具包。每个工具包保留自己的插件卡片和 Skill，作为独立的 `penguinharness-<工具包>-<包版本>.tgz` 随同一 Release 发布。
+
 - **Benchmark**：列出、搜索、按 Agent 过滤本 Project 的 Benchmark；手动创建、从 zip 导入、导出与删除。每个 Benchmark 的页面按 Agent 与模型展示分数走势、评估记录，以及各题的题干与评分细则。
 - **Agent 任务**：「用 AI 创建」「让 Agent 导入」「评估」「优化」「问 AI」点「开始」即直接发起 Agent 任务：它是你自己的对话，出现在侧栏，审批模式由你在表单里选（缺省全部允许）。工作台在每个 Benchmark 上列出由此发起的任务、状态与对话链接。
 - **Skill**：`benchmark-design` 设计并校准 Benchmark，或导入已发布的包；`agent-evaluation` 执行并评分一道题。两者预装在 `default_agent` 上，RSI 工具包的优化循环以它们为测量。

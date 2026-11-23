@@ -69,6 +69,66 @@ importers:
         specifier: ^2.5.0
         version: 2.9.1
 
+  plugins/ace-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
+  plugins/ape-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
+  plugins/awm-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
+  plugins/default-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
+  plugins/openskill-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
+  plugins/opro-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
+  plugins/rrsi-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
+  plugins/skilladam-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
+  plugins/skillopt-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
+  plugins/trace-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.18
+        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
 packages:
 
   '@antfu/install-pkg@2.1.0':

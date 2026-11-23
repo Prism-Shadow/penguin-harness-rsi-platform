@@ -84,30 +84,52 @@ const { values } = parseArgs({ options: { out: { type: "string" } } });
 const out = values.out
   ? path.resolve(values.out)
   : await fs.mkdtemp(path.join(os.tmpdir(), "rsi-pack-"));
-const packs = [];
-for (const run of [1, 2]) {
-  const dest = path.join(out, `pack-${run}`);
-  await fs.mkdir(dest, { recursive: true });
-  const [info] = JSON.parse(
-    execFileSync("npm", ["pack", "--json", "--pack-destination", dest], {
-      cwd: ROOT,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "inherit"],
-    }),
-  );
-  const bytes = await fs.readFile(path.join(dest, info.filename));
-  const integrity = `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
-  if (integrity !== info.integrity)
-    fail(`npm reports ${info.integrity}, the file hashes to ${integrity}`);
-  packs.push({
-    file: path.join(dest, info.filename),
-    integrity,
-    size: bytes.length,
-    entries: info.entryCount,
-  });
-  console.log(
-    `pack ${run}: ${info.filename} ${integrity} (${bytes.length} bytes, ${info.entryCount} files)`,
-  );
+const toolkits = (await fs.readdir(path.join(ROOT, "plugins"), { withFileTypes: true }))
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => path.join(ROOT, "plugins", entry.name))
+  .sort();
+
+for (const cwd of [ROOT, ...toolkits]) {
+  const manifest = JSON.parse(await fs.readFile(path.join(cwd, "package.json"), "utf8"));
+  const required = ["package.json", "LICENSE", "ifaces.json", "icon.svg"];
+  if (cwd !== ROOT) {
+    const { modules } = JSON.parse(await fs.readFile(path.join(cwd, "ifaces.json"), "utf8"));
+    const contributions = Object.values(modules).map((entry) => entry.contributes ?? {});
+    const cards = contributions.flatMap((entry) => entry["PluginLibraryModule.cards"] ?? []);
+    const skills = contributions.flatMap((entry) => entry["PluginLibraryModule.skills"] ?? []);
+    if (
+      manifest.name !== "@penguinharness/" + path.basename(cwd) ||
+      cards.length !== 1 ||
+      cards[0].category !== "rsi" ||
+      skills.length === 0
+    ) {
+      fail(`${manifest.name}: expected a named RSI toolkit with a library card and Skills`);
+    }
+    for (const skill of skills) required.push(path.posix.join(skill.path, "SKILL.md"));
+  }
+  let firstIntegrity;
+  for (const run of [1, 2]) {
+    const dest = path.join(out, `pack-${run}`);
+    await fs.mkdir(dest, { recursive: true });
+    const [info] = JSON.parse(
+      execFileSync("npm", ["pack", "--json", "--pack-destination", dest], {
+        cwd,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "inherit"],
+      }),
+    );
+    for (const entry of required) {
+      if (!info.files.some((file) => file.path === entry))
+        fail(`${manifest.name}: missing ${entry}`);
+    }
+    const bytes = await fs.readFile(path.join(dest, info.filename));
+    const integrity = `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    if (integrity !== info.integrity || (run === 2 && integrity !== firstIntegrity)) {
+      fail(`${info.filename}: package integrity differs`);
+    }
+    firstIntegrity = integrity;
+    console.log(
+      `pack ${run}: ${info.filename} ${integrity} (${bytes.length} bytes, ${info.entryCount} files)`,
+    );
+  }
 }
-if (packs[0].integrity !== packs[1].integrity) fail("two packs of one tree differ");
-console.log(`reproducible: ${packs[0].integrity}`);

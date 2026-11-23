@@ -2,6 +2,13 @@
 
 Each release's section is the GitHub release's notes. Versions follow semver; the harness pins one exact version.
 
+## [0.1.0-rc.2] — 2026-11-23
+
+### RSI toolkits
+
+- The RSI Platform now maintains the Default, OPRO, APE, ACE, AWM, SkillAdam, SkillOpt, OpenSkill, Trace and RRSI toolkit plugins. Each is a separate GitHub Release asset with its own package name and version.
+- RSI 平台现同时维护 Default、OPRO、APE、ACE、AWM、SkillAdam、SkillOpt、OpenSkill、Trace 与 RRSI 工具包。各工具包保留独立包名和版本，在同一 GitHub Release 提供各自的安装包。
+
 ## [0.1.0-rc.1] - 2026-11-22
 
 The first version: the harness's Evaluation Center as the external built-in plugin 「自进化工作台」 / Self-Evolution Workbench ([PRFC-0036](https://github.com/Prism-Shadow/penguin-harness-design/pull/503)).
