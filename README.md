@@ -4,6 +4,8 @@
 
 `@penguinharness/rsi-workbench` is the Self-Evolution Workbench of [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness): the system Agent's app for building Benchmarks and measuring and improving Agents against them. It ships built in with PenguinHarness, opens from the App Center, and runs in the App Center's window.
 
+The platform also maintains the RSI toolkit plugins under `plugins/`. Each toolkit ships in the same release as a separate `penguinharness-<toolkit>-<package-version>.tgz` with its own library card and Skills.
+
 - **Benchmarks.** List, search and filter the Project's Benchmarks, create one by hand, import a package from a zip, export one, or delete it. Each Benchmark's page shows its score history per Agent and model, its evaluations, and its cases' statements and rubrics.
 - **Agent tasks.** Create with AI, Import with an Agent, Evaluate, Optimize and Ask AI start an Agent task straight away, as your own conversation in the sidebar, with the approval mode you choose (allow-all unless you pick another). The workbench lists the tasks it started on each Benchmark, with their state and a link to the conversation.
 - **Skills.** `benchmark-design` designs and calibrates a Benchmark or imports a published package; `agent-evaluation` runs and scores one case. Both are preinstalled on `default_agent`, and the RSI toolkits' optimization loops measure through them.
