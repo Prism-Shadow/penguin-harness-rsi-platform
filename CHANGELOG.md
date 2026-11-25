@@ -2,6 +2,13 @@
 
 Each release's section is the GitHub release's notes. Versions follow semver; the harness pins one exact version.
 
+## [0.1.0-rc.3] — 2026-11-25
+
+### RSI toolkits
+
+- The Default RSI toolkit reaches its stable 0.2.19 version, with the content of 0.2.19-rc.1. The workbench and the other toolkits are unchanged.
+- Default RSI 工具包发布正式版 0.2.19，内容与 0.2.19-rc.1 相同。工作台与其余工具包没有变化。
+
 ## [0.1.0-rc.2] — 2026-11-23
 
 ### RSI toolkits

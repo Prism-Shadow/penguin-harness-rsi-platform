@@ -1,6 +1,6 @@
 {
   "name": "@penguinharness/rsi-workbench",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0-rc.3",
   "type": "module",
   "description": "The Self-Evolution Workbench for PenguinHarness: create, import, evaluate and optimize Agents against Benchmarks from the App Center, with the benchmark-design and agent-evaluation Skills.",
   "keywords": [
