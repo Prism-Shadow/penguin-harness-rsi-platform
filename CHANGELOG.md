@@ -2,6 +2,18 @@
 
 Each release's section is the GitHub release's notes. Versions follow semver; the harness pins one exact version.
 
+## [0.1.0] — 2026-11-25
+
+### RSI workbench
+
+- The RSI workbench reaches its first stable version, 0.1.0, with the content of 0.1.0-rc.2.
+- RSI 工作台发布首个正式版 0.1.0，内容与 0.1.0-rc.2 相同。
+
+### RSI toolkits
+
+- The Default RSI toolkit reaches its stable 0.2.19 version, with the content of 0.2.19-rc.1. The other toolkits are unchanged.
+- Default RSI 工具包发布正式版 0.2.19，内容与 0.2.19-rc.1 相同。其余工具包没有变化。
+
 ## [0.1.0-rc.2] — 2026-11-23
 
 ### RSI toolkits
