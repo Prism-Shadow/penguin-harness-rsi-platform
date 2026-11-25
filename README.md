@@ -49,7 +49,9 @@ pnpm pack:check       # after build: the static probe, and npm pack twice with e
 
 ## Release
 
-Tag the reviewed commit with `v<version>` to match the release candidate in `package.json`, for example `v0.1.0-rc.1`. The workflow tests and builds the package, compares two independent packs, then downloads the attached tarball and checks its bytes before publishing the GitHub prerelease. Its notes come from the matching CHANGELOG section.
+Tag the reviewed commit with `v<version>` to match the version in `package.json`. `v0.1.0-rc.1` is a release candidate and `v0.1.0` a stable release. The workflow tests and builds the package, compares two independent packs, then downloads the attached tarball and checks its bytes before publishing the GitHub release. A release candidate is published as a prerelease. Its notes come from the matching CHANGELOG section.
+
+When the repository variable `NPM_TRUSTED_PUBLISHING` is `true`, the workflow also publishes the release’s tarballs to npm through trusted publishing. Stable versions go to `latest` and prerelease versions to the `rc` tag. A version npm already has is skipped, and must have the same bytes. Publish a new package name once by hand from its release tarball, then set this workflow and the `npm` environment as its Trusted Publisher on npm.
 
 Use the release asset `penguinharness-rsi-workbench-<version>.tgz`. Register its versioned GitHub download URL and SHA-512 integrity in the [plugin index](https://github.com/Prism-Shadow/penguin-harness-plugins) when pinning the built-in workbench in PenguinHarness.
 

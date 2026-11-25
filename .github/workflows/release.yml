@@ -30,8 +30,8 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           declared=$(node -p "require('./package.json').version")
-          if ! [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-rc\.(0|[1-9][0-9]*)$ ]]; then
-            echo "Expected a release candidate tag such as v0.1.0-rc.1" >&2
+          if ! [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.(0|[1-9][0-9]*))?$ ]]; then
+            echo "Expected a version tag such as v0.1.0, or v0.1.0-rc.1 for a release candidate" >&2
             exit 1
           fi
           if [ "$declared" != "$version" ]; then
@@ -49,7 +49,7 @@ jobs:
       - name: Pack twice, compare, and probe the package
         run: pnpm pack:check --out "$RUNNER_TEMP/packs"
 
-      - name: Verify the release asset and publish the candidate
+      - name: Verify the release assets and publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.tag.outputs.version }}
@@ -62,13 +62,21 @@ jobs:
           ' CHANGELOG.md > "$notes"
           grep -q '[^[:space:]]' "$notes"
 
+          # An -rc version is a GitHub prerelease; a plain version is a stable release and the latest.
+          if [[ "$VERSION" == *-rc.* ]]; then
+            expected=true
+            kind=(--prerelease --latest=false)
+          else
+            expected=false
+            kind=(--prerelease=false --latest)
+          fi
           if ! gh release view "$GITHUB_REF_NAME" --json tagName >/dev/null 2>&1; then
-            gh release create "$GITHUB_REF_NAME" --verify-tag --draft --prerelease --latest=false \
+            gh release create "$GITHUB_REF_NAME" --verify-tag --draft "${kind[@]}" \
               --title "$GITHUB_REF_NAME" --notes-file "$notes"
           fi
           draft=$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)
           prerelease=$(gh release view "$GITHUB_REF_NAME" --json isPrerelease --jq .isPrerelease)
-          test "$prerelease" = true
+          test "$prerelease" = "$expected"
           gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/release-assets"
           for packed in "$RUNNER_TEMP/packs/pack-1/"*.tgz; do
             asset=$(basename "$packed")
@@ -84,5 +92,69 @@ jobs:
           gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | sort > "$RUNNER_TEMP/published-assets"
           diff -u "$RUNNER_TEMP/expected-assets" "$RUNNER_TEMP/published-assets"
           if [ "$draft" = true ]; then
-            gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease --latest=false
+            gh release edit "$GITHUB_REF_NAME" --draft=false "${kind[@]}"
           fi
+
+  # npm serves the very tarballs the Release carries, so the plugin index pins one sha512 for both
+  # channels. Skipped until the repository variable NPM_TRUSTED_PUBLISHING is 'true': trusted
+  # publishing cannot create a name, so each package is first published once by hand from a
+  # Release asset and given this workflow and the `npm` environment as its Trusted Publisher.
+  # A package npm has never seen is skipped with a warning and the others are still published.
+  publish-npm:
+    name: Publish the Release tarballs to npm
+    needs: release
+    if: ${{ vars.NPM_TRUSTED_PUBLISHING == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment:
+      name: npm
+      url: https://www.npmjs.com/org/penguinharness
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Assert npm supports trusted publishing (>= 11.5.1)
+        run: |
+          V="$(npm --version)"
+          echo "npm $V"
+          node -e 'const [M, m, p] = process.argv[1].split(".").map(Number); if (M < 11 || (M === 11 && (m < 5 || (m === 5 && p < 1)))) { console.error("npm " + process.argv[1] + " < 11.5.1"); process.exit(1); }' "$V"
+
+      - name: Download the tarballs the Release carries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern '*.tgz' --dir packs
+
+      # A version npm already has is skipped, and must be the Release's bytes. A prerelease goes
+      # under the `rc` dist-tag (npm refuses one without a tag), so `latest` keeps naming the
+      # newest stable version.
+      - name: Publish each tarball npm does not have yet
+        run: |
+          set -euo pipefail
+          failed=0
+          for file in packs/*.tgz; do
+            manifest="$(tar -xzOf "$file" package/package.json)"
+            name="$(printf '%s' "$manifest" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).name')"
+            version="$(printf '%s' "$manifest" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
+            integrity="sha512-$(openssl dgst -sha512 -binary "$file" | base64 -w0)"
+            if [ -z "$(npm view "$name" name 2>/dev/null || true)" ]; then
+              echo "::warning::$name has never been published to npm, so it is skipped. Publish $(basename "$file") from this Release once by hand and set its Trusted Publisher to this workflow and the npm environment."
+              continue
+            fi
+            published="$(npm view "$name@$version" dist.integrity 2>/dev/null || true)"
+            if [ -n "$published" ]; then
+              if [ "$published" != "$integrity" ]; then
+                echo "::error::$name@$version is on npm as $published, but this Release carries $integrity."
+                failed=1
+              fi
+              continue
+            fi
+            case "$version" in
+              *-*) npm publish "$file" --provenance --access public --tag rc ;;
+              *) npm publish "$file" --provenance --access public ;;
+            esac
+          done
+          exit "$failed"
