@@ -4,12 +4,25 @@ on:
   push:
     tags:
       - "v*"
+  # Publishes an existing Release's tarballs to npm without a new tag: only the npm job runs.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The existing release tag whose tarballs go to npm, for example v0.1.0"
+        required: true
+        type: string
+      skip:
+        description: "Package names to leave out, separated by spaces"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   release:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -100,10 +113,14 @@ jobs:
   # publishing cannot create a name, so each package is first published once by hand from a
   # Release asset and given this workflow and the `npm` environment as its Trusted Publisher.
   # A package npm has never seen is skipped with a warning and the others are still published.
+  # A manual run publishes the tarballs of the Release its `tag` input names and builds nothing.
   publish-npm:
     name: Publish the Release tarballs to npm
     needs: release
-    if: ${{ vars.NPM_TRUSTED_PUBLISHING == 'true' }}
+    if: >-
+      ${{ vars.NPM_TRUSTED_PUBLISHING == 'true' && !cancelled() &&
+          (needs.release.result == 'success' ||
+           (github.event_name == 'workflow_dispatch' && needs.release.result == 'skipped')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -126,20 +143,31 @@ jobs:
       - name: Download the tarballs the Release carries
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern '*.tgz' --dir packs
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.tgz' --dir packs
 
       # A version npm already has is skipped, and must be the Release's bytes. A prerelease goes
       # under the `rc` dist-tag (npm refuses one without a tag), so `latest` keeps naming the
       # newest stable version.
+      # The path starts with ./ because npm reads a bare `packs/<file>.tgz` as a GitHub
+      # `owner/repository` shorthand and tries to clone it.
       - name: Publish each tarball npm does not have yet
+        env:
+          SKIP: ${{ github.event_name == 'workflow_dispatch' && inputs.skip || '' }}
         run: |
           set -euo pipefail
           failed=0
-          for file in packs/*.tgz; do
+          for file in ./packs/*.tgz; do
             manifest="$(tar -xzOf "$file" package/package.json)"
             name="$(printf '%s' "$manifest" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).name')"
             version="$(printf '%s' "$manifest" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
             integrity="sha512-$(openssl dgst -sha512 -binary "$file" | base64 -w0)"
+            case " $SKIP " in
+              *" $name "*)
+                echo "$name@$version is left out by the skip input."
+                continue
+                ;;
+            esac
             if [ -z "$(npm view "$name" name 2>/dev/null || true)" ]; then
               echo "::warning::$name has never been published to npm, so it is skipped. Publish $(basename "$file") from this Release once by hand and set its Trusted Publisher to this workflow and the npm environment."
               continue
@@ -149,6 +177,8 @@ jobs:
               if [ "$published" != "$integrity" ]; then
                 echo "::error::$name@$version is on npm as $published, but this Release carries $integrity."
                 failed=1
+              else
+                echo "$name@$version is already on npm with the same bytes."
               fi
               continue
             fi
