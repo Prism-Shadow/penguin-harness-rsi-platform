@@ -49,7 +49,9 @@ pnpm pack:check       # 构建后：静态探测，以及两次 npm pack 的 sha
 
 ## 发布
 
-给已审阅的提交打上与 `package.json` 一致的候选版本标签，例如 `v0.1.0-rc.1`。发布流程运行测试、构建，并比对两次打包的结果。上传 tarball 后，流程从 GitHub 重新下载并核对字节，再公开预发布版本。发行说明取自 CHANGELOG 对应小节。
+给已审阅的提交打上与 `package.json` 版本一致的标签：`v0.1.0-rc.1` 是候选版本，`v0.1.0` 是正式版本。发布流程运行测试、构建，并比对两次打包的结果。上传 tarball 后，流程从 GitHub 重新下载并核对字节，再公开这次发布；候选版本以预发布形式公开。发行说明取自 CHANGELOG 对应小节。
+
+仓库变量 `NPM_TRUSTED_PUBLISHING` 为 `true` 时，流程还会通过可信发布把这次发布的 tarball 推送到 npm：正式版本进入 `latest`，预发布版本进入 `rc` 标签。npm 上已有的版本会跳过，但内容必须一致。新的包名需要先用发布附件手动发布一次，再在 npm 上把本流程和 `npm` 环境设为它的可信发布者。
 
 安装包为 GitHub Release 附件 `penguinharness-rsi-workbench-<version>.tgz`。在 PenguinHarness 锁定内置工作台时，将该版本附件的下载地址与 SHA-512 完整性值登记到[插件索引](https://github.com/Prism-Shadow/penguin-harness-plugins)。
 
