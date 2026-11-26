@@ -29,7 +29,7 @@
 | `package.json` | 清单：一个 `Workbench` 模块，requires 宿主的 `WorkbenchHost`、provides `WorkbenchMain`，贡献一个标签页，以 iframe 渲染 `ui/index.html` |
 | `index.ts` | 处理器，由宿主编译：工作台接口下的 Benchmark 路由，数据存在其 agent 级数据目录（`<agentDir>/app/data/benchmark/`）；各任务发送的提示词；页面发起的任务（记在工作台状态里）；首次加载时写入的种子 |
 | `lib/` | 处理器的模块：`format/`（`./format` 的副本，由 `scripts/copy-format.mjs` 写出）、`vendor/`（smol-toml 与 yaml 的 TypeScript 源码及其许可）、基于 `node:zlib` 的 zip 容器 |
-| `ui/` | 页面，由 Vite 构建（打包 React 与 `@prismshadow/penguin-ui`，不含 Mermaid）：从自己的地址读出 Project、Agent 与服务端，以打开它的人的身份调用处理器与 Web App 自己的接口 |
+| `ui/` | 页面，由 Vite 构建（打包 React 与 `@prismshadow/penguin-ui`，不含 Mermaid；只有文本文件，字体与图片内联）：从自己的地址读出 Project、Agent 与服务端，以打开它的人的身份调用处理器与 Web App 自己的接口 |
 | `seeds/` | 种子 Benchmark 与 `catalog.json`（供 harness 的组件画廊与官网列出） |
 
 管理员的页面另经宿主的机器代理读取各机器上同一 Agent 的工作台副本，按 id 合并；尚未升级的机器改读它旧的 `/api/projects/:projectId/benchmarks` 接口（兼容代码，留到 1.0）。

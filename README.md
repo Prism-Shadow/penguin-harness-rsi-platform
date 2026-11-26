@@ -29,7 +29,7 @@ The workbench folder is all the workbench has at runtime, so everything it needs
 | `package.json` | the manifest: one `Workbench` module that requires the host's `WorkbenchHost`, provides `WorkbenchMain` and contributes one tab, an iframe of `ui/index.html` |
 | `index.ts` | the handler, compiled by the host: the Benchmark routes under the workbench's API mount, kept in its agent-level data folder (`<agentDir>/app/data/benchmark/`), the prompt each task sends, the tasks the page started (in the workbench's state), and the seeds written on the first load |
 | `lib/` | the handler's modules: `format/` (a copy of `./format`, written by `scripts/copy-format.mjs`), `vendor/` (smol-toml and yaml as TypeScript source, with their licences) and a zip container over `node:zlib` |
-| `ui/` | the page, built by Vite (React and `@prismshadow/penguin-ui` bundled, no Mermaid): it reads its Project, Agent and server from its own address, and calls the handler and the Web App's own routes as the person who opened it |
+| `ui/` | the page, built by Vite (React and `@prismshadow/penguin-ui` bundled, no Mermaid, text files only: fonts and pictures inline): it reads its Project, Agent and server from its own address, and calls the handler and the Web App's own routes as the person who opened it |
 | `seeds/` | the seeded Benchmarks and `catalog.json`, which lists them for the harness's gallery and landing page |
 
 An admin's page also reads each machine's copy of the same Agent's workbench through the host's machine proxy and merges them by id; a machine that has not upgraded is read at its older `/api/projects/:projectId/benchmarks` route (compatibility kept until 1.0).

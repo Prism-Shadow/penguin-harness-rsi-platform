@@ -22,5 +22,10 @@ export default defineConfig({
     sourcemap: false,
     // Hashed names; the same sources build the same bytes, which `npm pack` twice relies on.
     assetsDir: "assets",
+    // Every asset inline, as a data URI in the file that names it: an install copies a
+    // workbench's files as text (the harness's library reader leaves out, and for a built-in
+    // plugin refuses, anything that is not UTF-8), so the UI package's KaTeX fonts and the Doodle
+    // theme's picture travel inside the stylesheet rather than as files of their own.
+    assetsInlineLimit: () => true,
   },
 });

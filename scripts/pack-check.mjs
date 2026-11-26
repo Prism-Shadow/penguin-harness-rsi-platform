@@ -14,6 +14,8 @@
  *    (each with its SKILL.md) and the workbench, whose folder holds its manifest — one `Workbench`
  *    module whose tab renders as an iframe of a page that is built — its `index.ts`, its icon and
  *    its seeds with their catalog. The built page carries no Mermaid chunk, and its size is printed.
+ *    Every file of the workbench and of each Skill installs as text (`requireText`: strict UTF-8,
+ *    the harness library reader's rule), the toolkits' Skills included.
  * 4. `npm pack` twice gives the same bytes, for the package and every toolkit: the sha512 the
  *    plugin index and the harness's lock record is a property of the source, not of the run. The
  *    workbench travels without what a host writes into a loaded folder (`.build/`, `.harness/`).
@@ -133,6 +135,44 @@ for (const entry of await fs.readdir(ui, { recursive: true, withFileTypes: true 
   uiBytes += (await fs.stat(path.join(entry.parentPath, entry.name))).size;
   uiFiles += 1;
 }
+
+/**
+ * The files under `dir` an install would not carry, by path: the harness's library reader
+ * (packages/core plugin/library-reader.ts `readDirFiles`) copies a workbench's, a Skill's and a
+ * hook package's files as text — every regular file whose bytes decode as strict UTF-8
+ * (`TextDecoder("utf-8", { fatal: true, ignoreBOM: true })`), whatever its extension — and leaves
+ * out anything else with a warning ("… is not a text file; it is not installed"), which is fatal
+ * for a built-in plugin. A link or other special entry it skips silently; here it fails too, since
+ * the copy would lose it.
+ */
+const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+async function notInstalledAsText(dir, rel = "") {
+  const out = [];
+  for (const entry of await fs.readdir(path.join(dir, rel), { withFileTypes: true })) {
+    const child = rel === "" ? entry.name : `${rel}/${entry.name}`;
+    if (entry.isDirectory()) out.push(...(await notInstalledAsText(dir, child)));
+    else if (!entry.isFile()) out.push(`${child} (not a regular file)`);
+    else {
+      try {
+        strictUtf8.decode(await fs.readFile(path.join(dir, child)));
+      } catch {
+        out.push(child);
+      }
+    }
+  }
+  return out;
+}
+
+/** Fails when an install of `dir` (named `what`) would leave a file out. */
+async function requireText(dir, what) {
+  const left = await notInstalledAsText(dir);
+  if (left.length > 0) {
+    fail(`${what} holds files an install does not carry as text: ${left.slice(0, 10).join(", ")}`);
+  }
+}
+
+await requireText(folder, `the workbench ${workbenches[0].path}`);
+for (const skill of skills) await requireText(path.join(ROOT, skill.path), `skill ${skill.name}`);
 console.log(
   `probe: ${manifests.length} data-only module(s), ${contributions.length} contributions; ` +
     `workbench ${manifest.name} ${manifest.penguin.version}; ui/ ${uiFiles} files, ${uiBytes} bytes`,
@@ -173,7 +213,10 @@ for (const cwd of [ROOT, ...toolkits]) {
     ) {
       fail(`${own.name}: expected a named RSI toolkit with a library card and Skills`);
     }
-    for (const skill of toolkitSkills) required.push(path.posix.join(skill.path, "SKILL.md"));
+    for (const skill of toolkitSkills) {
+      required.push(path.posix.join(skill.path, "SKILL.md"));
+      await requireText(path.join(cwd, skill.path), `${own.name} skill ${skill.name}`);
+    }
   }
   let firstIntegrity;
   for (const run of [1, 2]) {
