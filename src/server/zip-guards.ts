@@ -10,8 +10,6 @@ import { WorkbenchError } from "./errors.js";
 export const MAX_ARCHIVE_BYTES = 14 * 1024 * 1024;
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
-/** Maximum files when exporting a package. */
-export const MAX_ARCHIVE_FILES = 1000;
 
 function archiveInvalid(message: string): WorkbenchError {
   return new WorkbenchError(400, "benchmark_archive_invalid", message);
@@ -57,6 +55,33 @@ export function unzipBounded(
       return true;
     },
   });
+}
+
+/** fflate writes a 16-bit entry count. Add the ZIP64 end records when that field fills up.
+ * Archive sizes and offsets fit in 32 bits under the package's byte limit (APPNOTE §4.3.14–16). */
+export function withZip64FileCount(zip: Uint8Array, fileCount: number): Uint8Array {
+  if (fileCount < 0xffff) return zip;
+
+  // zipSync writes a 22-byte end record with no archive comment.
+  const endOffset = zip.byteLength - 22;
+  const end = Buffer.from(zip.subarray(endOffset));
+  const directoryEnd = Buffer.alloc(56);
+  directoryEnd.writeUInt32LE(0x06064b50, 0);
+  directoryEnd.writeBigUInt64LE(44n, 4);
+  directoryEnd.writeUInt16LE(45, 12); // ZIP version 4.5, made by and needed to extract
+  directoryEnd.writeUInt16LE(45, 14);
+  directoryEnd.writeBigUInt64LE(BigInt(fileCount), 24);
+  directoryEnd.writeBigUInt64LE(BigInt(fileCount), 32);
+  directoryEnd.writeBigUInt64LE(BigInt(end.readUInt32LE(12)), 40); // directory size
+  directoryEnd.writeBigUInt64LE(BigInt(end.readUInt32LE(16)), 48); // directory offset
+
+  const locator = Buffer.alloc(20);
+  locator.writeUInt32LE(0x07064b50, 0);
+  locator.writeBigUInt64LE(BigInt(endOffset), 8);
+  locator.writeUInt32LE(1, 16); // one disk
+  end.writeUInt16LE(0xffff, 8);
+  end.writeUInt16LE(0xffff, 10);
+  return Buffer.concat([zip.subarray(0, endOffset), directoryEnd, locator, end]);
 }
 
 /**

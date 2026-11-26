@@ -37,7 +37,7 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
-import { strFromU8, strToU8, unzipSync, type Zippable } from "fflate";
+import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from "fflate";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { parse as parseYaml } from "yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -46,6 +46,8 @@ import type {
   BenchmarkCasesResponse,
   BenchmarksResponse,
 } from "../../src/api.js";
+import { readBenchmarkArchive } from "../../src/server/archive.js";
+import { withZip64FileCount } from "../../src/server/zip-guards.js";
 import { entriesOf, exists, write } from "../helpers/files.js";
 import { canCreateSymlink, createTestHost, type TestHost } from "../helpers/host.js";
 import { switchTimeZone } from "../helpers/time-zone.js";
@@ -217,7 +219,7 @@ describe("benchmark packages", () => {
       expect((await list()).map((b) => [b.id, b.caseCount])).toEqual([["report-writing-v1", 2]]);
     });
 
-    it("imports 500 cases and reads only the requested page's statements", async () => {
+    it("imports and exports 500 cases and reads only the requested page's statements", async () => {
       const files: Record<string, Uint8Array> = {
         "benchmark_config.toml": strToU8(stringifyToml(manifest("large"))),
       };
@@ -243,6 +245,14 @@ describe("benchmark packages", () => {
       } finally {
         read.mockRestore();
       }
+      const exported = await member.get(`${base}/large/archive`);
+      expect(exported.status).toBe(200);
+      const entries = unzipSync(new Uint8Array(await exported.arrayBuffer()));
+      expect(Object.keys(entries).sort()).toEqual(
+        Object.keys(files)
+          .map((name) => `large/${name}`)
+          .sort(),
+      );
     });
 
     it("a package whose manifest predates id, version and origin imports under its directory's name, unversioned, and its copy names the id", async () => {
@@ -613,6 +623,19 @@ describe("benchmark packages", () => {
   });
 
   describe("export", () => {
+    it("preserves all 65,536 entries when the ZIP32 file count would wrap to zero", () => {
+      const files = packageFiles("large", "");
+      const fileCount = 65_536;
+      const empty = new Uint8Array();
+      for (let i = Object.keys(files).length; i < fileCount; i++) {
+        files[`CASE-002-format/statement/${i}.txt`] = empty;
+      }
+      const zip = withZip64FileCount(zipSync(files, { level: 0 }), fileCount);
+      const { caseFiles } = readBenchmarkArchive(zip);
+      expect(caseFiles.size).toBe(fileCount - 1); // the manifest is separate
+      expect(caseFiles.has("CASE-002-format/statement/65535.txt")).toBe(true);
+    });
+
     /**
      * A published Benchmark on disk, as an Agent's import from the repository leaves one, with
      * this copy's own state beside its package.

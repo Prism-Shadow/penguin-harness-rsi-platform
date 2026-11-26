@@ -34,7 +34,6 @@ import { isValidId } from "../format/ids.js";
 import { WorkbenchError } from "./errors.js";
 import {
   MAX_ARCHIVE_BYTES,
-  MAX_ARCHIVE_FILES,
   MAX_FILE_BYTES,
   MAX_TOTAL_BYTES,
   assertDistinctPaths,
@@ -42,6 +41,7 @@ import {
   CONTROL_CHARACTER,
   specialEntries,
   unzipBounded,
+  withZip64FileCount,
 } from "./zip-guards.js";
 
 /** A case's directory: `CASE-` and the id alphabet, the create route's rule for a case id. */
@@ -232,17 +232,14 @@ export async function packBenchmark(
   manifest: BenchmarkManifest,
 ): Promise<Uint8Array> {
   const out: Record<string, Uint8Array> = {};
-  let count = 0;
   let total = 0;
   const tooLarge = () =>
     benchmarkTooLarge(
-      `Benchmark exceeds the package limits (${MAX_ARCHIVE_FILES} files, 5MB per file, 20MB in all, 14MB zipped).`,
+      "Benchmark exceeds the package limits (5MB per file, 20MB in all, 14MB zipped).",
     );
   const add = (rel: string, data: Uint8Array) => {
-    count += 1;
     total += data.byteLength;
-    if (count > MAX_ARCHIVE_FILES || data.byteLength > MAX_FILE_BYTES) throw tooLarge();
-    if (total > MAX_TOTAL_BYTES) throw tooLarge();
+    if (data.byteLength > MAX_FILE_BYTES || total > MAX_TOTAL_BYTES) throw tooLarge();
     out[`${manifest.id}/${rel}`] = data;
   };
   const walk = async (abs: string, rel: string): Promise<void> => {
@@ -270,7 +267,7 @@ export async function packBenchmark(
       await walk(path.join(benchDir, entry.name), entry.name);
     }
   }
-  const zip = zipSync(out, { mtime: packageMtime() });
+  const zip = withZip64FileCount(zipSync(out, { mtime: packageMtime() }), Object.keys(out).length);
   if (zip.byteLength > MAX_ARCHIVE_BYTES) throw tooLarge();
   return zip;
 }
