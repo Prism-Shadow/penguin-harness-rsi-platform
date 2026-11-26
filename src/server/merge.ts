@@ -9,8 +9,12 @@
  * plugin needed to keep from asking its own machines in turn; a harness that still serves the
  * Evaluation Center itself ignores it and answers its local list all the same.
  */
-import type { BenchmarkCasesResponse, BenchmarkSummary, BenchmarksResponse } from "../api.js";
-import { casePage } from "../api.js";
+import type {
+  BenchmarkCaseSummary,
+  BenchmarkCasesResponse,
+  BenchmarkSummary,
+  BenchmarksResponse,
+} from "../api.js";
 import type { MachineApiView } from "./host.js";
 
 /** How long one machine's answer is waited for before it counts as no answer. */
@@ -49,23 +53,8 @@ export function benchmarksAnswer(body: unknown): readonly BenchmarkSummary[] | n
   return Array.isArray(list) ? (list as BenchmarkSummary[]) : null;
 }
 
-/** Older machines ignore case queries and return the full list. Apply the selection at the hub. */
-export function casesAnswer(
-  body: unknown,
-  page?: number,
-  wanted?: ReadonlySet<string>,
-): BenchmarkCasesResponse | null {
-  const answer = body as Partial<BenchmarkCasesResponse> | null;
-  if (!Array.isArray(answer?.cases)) return null;
-  if (page !== undefined) {
-    return typeof answer.total === "number"
-      ? { cases: answer.cases, total: answer.total }
-      : { cases: casePage(answer.cases, page), total: answer.cases.length };
-  }
-  return { cases: wanted?.size ? answer.cases.filter((c) => wanted.has(c.id)) : answer.cases };
-}
-
-export function caseIdsAnswer(body: unknown): string[] | null {
-  const ids = (body as { ids?: string[] } | null)?.ids;
-  return Array.isArray(ids) ? ids : (casesAnswer(body)?.cases.map((c) => c.id) ?? null);
+/** A machine's case list answer, when it is one. */
+export function casesAnswer(body: unknown): readonly BenchmarkCaseSummary[] | null {
+  const list = (body as Partial<BenchmarkCasesResponse> | null)?.cases;
+  return Array.isArray(list) ? (list as BenchmarkCaseSummary[]) : null;
 }

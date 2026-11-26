@@ -32,9 +32,9 @@ import {
   type ChartPaint,
 } from "@prismshadow/penguin-ui";
 import type { AskCaseFacts, MergedBenchmark, MergedCase, MergedEvaluation } from "../../api";
-import { CASES_PER_PAGE } from "../../api";
+import { CASES_PER_PAGE, casePage } from "../../api";
 import { useStrings, useWorkbench } from "../context";
-import { useBenchmarkCasePage, useBenchmarkCases } from "../sources";
+import { useBenchmarkCases } from "../sources";
 import { formatDateTime, formatMoney, formatScore, humanizeDuration } from "../format";
 import {
   benchmarkDescription,
@@ -303,10 +303,18 @@ export function BenchmarkDetail({ benchmark: bm }: { benchmark: MergedBenchmark 
   const wb = useWorkbench();
   const description = benchmarkDescription(bm, wb.locale);
   const [page, setPage] = useState(0);
-  const casesView = useBenchmarkCasePage(wb.api, bm.id, bm.machineIds, page + 1);
-  const total = casesView.total ?? bm.caseCount;
-  const pageCount = Math.max(1, Math.ceil(total / CASES_PER_PAGE));
+  const localOnly = bm.machineIds.length === 1 && bm.machineIds[0] === null;
+  const casesView = useBenchmarkCases(
+    wb.api,
+    bm.id,
+    bm.machineIds,
+    localOnly ? page + 1 : undefined,
+  );
   const cases = casesView.cases;
+  const count = localOnly ? (casesView.total ?? bm.caseCount) : (cases?.length ?? 0);
+  const pageCount = Math.max(1, Math.ceil(count / CASES_PER_PAGE));
+  const current = Math.min(page, pageCount - 1);
+  const shown = localOnly || cases === null ? cases : casePage(cases, current + 1);
   const caseError = casesView.error === null ? null : errorText(casesView.error, s);
   const [openCaseId, setOpenCaseId] = useState<string | null>(null);
   /** Which evaluation's dialog is open, as a position in scoreboard order. */
@@ -327,7 +335,7 @@ export function BenchmarkDetail({ benchmark: bm }: { benchmark: MergedBenchmark 
   const evaluationCases = useBenchmarkCases(
     wb.api,
     bm.id,
-    opened?.cases.length ? bm.machineIds : [],
+    localOnly && opened?.cases.length ? bm.machineIds : [],
   );
   const caseTitles = new Map(
     (evaluationCases.cases ?? cases)?.map((item) => [item.id, item.title]),
@@ -337,7 +345,7 @@ export function BenchmarkDetail({ benchmark: bm }: { benchmark: MergedBenchmark 
     <div className="space-y-5">
       <div>
         <p className="text-xs text-fg-muted">
-          {s.benchmark.caseCount(total)} · {s.benchmark.runsPerCase(bm.runs ?? 1)}
+          {s.benchmark.caseCount(bm.caseCount)} · {s.benchmark.runsPerCase(bm.runs ?? 1)}
         </p>
         {description !== undefined && description !== "" && (
           <p className="mt-1 text-sm text-fg-muted">{description}</p>
@@ -345,9 +353,9 @@ export function BenchmarkDetail({ benchmark: bm }: { benchmark: MergedBenchmark 
       </div>
 
       <CasesSection
-        cases={cases}
+        cases={shown}
         error={caseError}
-        page={page}
+        page={current}
         pageCount={pageCount}
         onChangePage={setPage}
         onOpenCase={setOpenCaseId}

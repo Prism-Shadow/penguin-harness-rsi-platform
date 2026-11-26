@@ -40,6 +40,7 @@ import { SCOREBOARD_FILE, emptyScoreboard, parseScoreboard } from "../format/sco
 import type {
   BenchmarkArchiveGitOrigin,
   BenchmarkCaseSummary,
+  BenchmarkCasesResponse,
   BenchmarkEvaluation,
   BenchmarkOrigin,
   BenchmarkSummary,
@@ -47,6 +48,7 @@ import type {
   CaseFilesResponse,
   CaseMaterial,
 } from "../api.js";
+import { casePage } from "../api.js";
 import { packBenchmark, readBenchmarkArchive } from "./archive.js";
 import { WorkbenchError } from "./errors.js";
 import type { CaseFileContent, CaseFiles } from "./host.js";
@@ -450,9 +452,15 @@ export class BenchmarkStore {
     };
   }
 
-  async caseIds(projectId: string, benchmarkId: string): Promise<string[]> {
+  async listCases(
+    projectId: string,
+    benchmarkId: string,
+    page?: number,
+  ): Promise<BenchmarkCasesResponse> {
     const baseDir = await this.dir(projectId);
     const benchDir = path.join(baseDir, benchmarkId);
+    const empty: BenchmarkCasesResponse =
+      page === undefined ? { cases: [] } : { cases: [], total: 0 };
     let entries: Array<{ name: string; isDirectory(): boolean }>;
     let realBaseDir: string;
     let realBenchDir: string;
@@ -463,32 +471,34 @@ export class BenchmarkStore {
         fs.realpath(benchDir),
       ]);
     } catch {
-      return [];
+      return empty;
     }
-    if (!isWithin(realBaseDir, realBenchDir)) return [];
-    return entries
-      .filter((item) => item.isDirectory() && item.name.startsWith("CASE-"))
-      .map((entry) => entry.name)
-      .sort((a, b) => a.localeCompare(b));
-  }
+    if (!isWithin(realBaseDir, realBenchDir)) return empty;
 
-  async caseSummaries(
-    projectId: string,
-    benchmarkId: string,
-    ids: string[],
-  ): Promise<BenchmarkCaseSummary[]> {
+    const ordered = entries
+      .filter((item) => item.isDirectory() && item.name.startsWith("CASE-"))
+      .sort((a, b) => a.name.localeCompare(b.name));
     const cases: BenchmarkCaseSummary[] = [];
-    for (const id of ids) {
+    for (const entry of page === undefined ? ordered : casePage(ordered, page)) {
+      const fallback: BenchmarkCaseSummary = { id: entry.name, title: entry.name };
       try {
-        const statementDir = await this.caseMaterialRoot(projectId, benchmarkId, id, "statement");
+        const statementDir = await this.caseMaterialRoot(
+          projectId,
+          benchmarkId,
+          entry.name,
+          "statement",
+        );
         const realReadme = await fs.realpath(path.join(statementDir, "README.md"));
         if (!isWithin(statementDir, realReadme)) throw new Error("README escapes Statement");
-        cases.push({ id, title: await readStatementTitle(realReadme, id) });
+        cases.push({
+          id: entry.name,
+          title: await readStatementTitle(realReadme, entry.name),
+        });
       } catch {
-        cases.push({ id, title: id });
+        cases.push(fallback);
       }
     }
-    return cases;
+    return page === undefined ? { cases } : { cases, total: ordered.length };
   }
 
   async listCaseFiles(
@@ -532,7 +542,7 @@ export class BenchmarkStore {
         fs.realpath(materialRoot),
       ]);
       // Every level stays where its name puts it: a Benchmark folder that links out of the
-      // Project's Benchmark folder serves no files, as it lists no cases.
+      // Project's Benchmark folder serves no files, as it lists no cases (listCases).
       if (
         !isWithin(realBaseDir, realBenchDir) ||
         !isWithin(realBenchDir, realCaseDir) ||

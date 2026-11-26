@@ -119,10 +119,6 @@ export function projectApi(projectId: string) {
   /** `path`, asking `machineId`'s copy instead of this server's (null). */
   const of = (path: string, machineId: string | null) =>
     machineId === null ? path : `${path}?machine=${enc(machineId)}`;
-  const caseList = (id: string, machineId: string | null, query: URLSearchParams) => {
-    if (machineId !== null) query.set("machine", machineId);
-    return `${one(id)}/cases${query.size ? `?${query}` : ""}`;
-  };
   return {
     /** This server's Benchmarks (null), or one machine's. */
     listBenchmarks: (machineId: string | null = null) =>
@@ -137,21 +133,10 @@ export function projectApi(projectId: string) {
     archiveUrl: (benchmarkId: string, machineId: string | null) =>
       apiUrl(`${one(benchmarkId)}/archive`, machineId),
     /** A Benchmark's cases in this server's copy (null), or in one machine's. */
-    cases: (
-      benchmarkId: string,
-      machineId: string | null = null,
-      selection?: number | readonly string[],
-    ) => {
-      const query = new URLSearchParams();
-      if (typeof selection === "number") query.set("page", String(selection));
-      else for (const id of selection ?? []) query.append("id", id);
-      return call<BenchmarkCasesResponse>("GET", caseList(benchmarkId, machineId, query));
-    },
-    caseIds: (benchmarkId: string, machineId: string | null) =>
-      call<{ ids: string[] }>(
-        "GET",
-        caseList(benchmarkId, machineId, new URLSearchParams({ index: "1" })),
-      ),
+    cases: (benchmarkId: string, machineId: string | null = null) =>
+      call<BenchmarkCasesResponse>("GET", of(`${one(benchmarkId)}/cases`, machineId)),
+    casePage: (benchmarkId: string, page: number) =>
+      call<BenchmarkCasesResponse>("GET", `${one(benchmarkId)}/cases?page=${page}`),
     caseFiles: (
       benchmarkId: string,
       caseId: string,

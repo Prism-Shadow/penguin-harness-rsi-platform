@@ -10,8 +10,7 @@
  *   DELETE /:benchmarkId                               remove one whole (owner)
  *   POST   /archive                                    import a package from a zip (any member)
  *   GET    /:benchmarkId/archive                       export the package (any member)
- *   GET    /:benchmarkId/cases                         cases here or on `?machine=<id>`; `page` is one-based,
- *                                                      `index=1` lists IDs, repeated `id` selects cases
+ *   GET    /:benchmarkId/cases                         its cases here; `?machine=<id>` a machine's
  *   GET    /:benchmarkId/cases/:caseId/files           a case's statement files
  *   GET    /:benchmarkId/cases/:caseId/files/content
  *   GET    /:benchmarkId/cases/:caseId/rubric/files    a case's rubric files
@@ -30,6 +29,7 @@ import { Hono, type Context } from "hono";
 import type {
   BenchmarkArchiveGitOrigin,
   BenchmarkArchiveImportResponse,
+  BenchmarkCasesResponse,
   BenchmarkCreateResponse,
   BenchmarksResponse,
   CaseMaterial,
@@ -40,7 +40,6 @@ import type {
   WorkbenchContext,
   WorkbenchMethod,
 } from "../api.js";
-import { casePage } from "../api.js";
 import { isValidId } from "../format/ids.js";
 import { WorkbenchError, badRequest, errorFields } from "./errors.js";
 import type {
@@ -53,7 +52,7 @@ import type {
   ProjectMachines,
   ProjectModels,
 } from "./host.js";
-import { askMachine, benchmarksAnswer, caseIdsAnswer, casesAnswer } from "./merge.js";
+import { askMachine, benchmarksAnswer, casesAnswer } from "./merge.js";
 import { pluginShipping, rsiMethods } from "./methods.js";
 import { benchmarkFolder, buildRequest } from "./prompts.js";
 import type { BenchmarkCaseInput, BenchmarkStore } from "./service.js";
@@ -555,35 +554,23 @@ export function workbenchRoutes(deps: WorkbenchRouteDeps): Hono<RouteEnv> {
     const { projectId } = projectOf(c, deps);
     const benchmarkId = requireValidId(c, "benchmarkId");
     const machineId = c.req.query("machine");
-    const rawPage = c.req.query("page");
-    const page = rawPage === undefined ? undefined : Number(rawPage);
-    if (page !== undefined && (!Number.isSafeInteger(page) || page < 1)) {
-      throw badRequest("page must be a positive integer.");
+    if (machineId === undefined) {
+      const raw = c.req.query("page");
+      const page = raw === undefined ? undefined : Number(raw);
+      if (page !== undefined && (!Number.isSafeInteger(page) || page < 1)) {
+        throw badRequest("page must be a positive integer.");
+      }
+      return c.json(await deps.store.listCases(projectId, benchmarkId, page));
     }
-    const indexOnly = c.req.query("index") === "1";
-    const wanted = new Set(c.req.queries("id"));
-    if (machineId !== undefined) {
-      const query = new URL(c.req.url).searchParams;
-      query.delete("machine");
-      query.set("local", "1");
-      const remote = `/api/projects/${encodeURIComponent(projectId)}/benchmarks/${encodeURIComponent(benchmarkId)}/cases?${query}`;
-      if (indexOnly)
-        return c.json({
-          ids: await fromMachine(c, deps, projectId, machineId, remote, caseIdsAnswer),
-        });
-      return c.json(
-        await fromMachine(c, deps, projectId, machineId, remote, (body) =>
-          casesAnswer(body, page, wanted),
-        ),
-      );
-    }
-    const ids = await deps.store.caseIds(projectId, benchmarkId);
-    if (indexOnly) return c.json({ ids });
-    let selected = ids;
-    if (page !== undefined) selected = casePage(ids, page);
-    else if (wanted.size) selected = ids.filter((id) => wanted.has(id));
-    const cases = await deps.store.caseSummaries(projectId, benchmarkId, selected);
-    return c.json({ cases, ...(page !== undefined && { total: ids.length }) });
+    const cases = await fromMachine(
+      c,
+      deps,
+      projectId,
+      machineId,
+      `/api/projects/${encodeURIComponent(projectId)}/benchmarks/${encodeURIComponent(benchmarkId)}/cases?local=1`,
+      casesAnswer,
+    );
+    return c.json({ cases: [...cases] } satisfies BenchmarkCasesResponse);
   });
 
   app.get("/:benchmarkId/cases/:caseId/files", listCaseFiles(deps, "statement"));

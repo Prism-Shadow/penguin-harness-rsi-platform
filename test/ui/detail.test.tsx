@@ -163,55 +163,46 @@ describe("a Benchmark's page", () => {
     expect(pages()).toEqual(["1", "2", "1"]);
   });
 
-  it("pages the union of copies once and opens a machine-only case through its proxy", async () => {
-    const local = ["CASE-001", "CASE-002", "CASE-003", "CASE-004", "CASE-005"];
-    const remote = ["CASE-001", "CASE-005", "CASE-006-report"];
+  it("reads a case's files from the machine that listed it, through the proxy", async () => {
     const { server } = await openPage(
-      benchmark({ caseCount: 5 }),
+      benchmark(),
       (s) => {
-        s.on("GET", "/api/projects/proj/benchmarks/sec-a/cases", ({ query }) => {
-          const ids = query.has("machine") ? remote : local;
-          if (query.has("index")) return json({ ids });
-          const wanted = query.getAll("id");
-          const visible = wanted.length ? ids.filter((id) => wanted.includes(id)) : ids;
-          return json({ cases: visible.map((id) => ({ id, title: id })), total: ids.length });
-        });
-        s.on("GET", "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-006-report/files", {
+        s.on("GET", "/api/projects/proj/benchmarks/sec-a/cases", (request) =>
+          json({
+            cases:
+              request.query.get("machine") === "m-1"
+                ? [{ id: "CASE-001-report", title: "Conflicting sources" }]
+                : [],
+          }),
+        );
+        s.on("GET", "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/files", {
           path: "",
           entries: [],
         });
         s.on(
           "GET",
-          "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-006-report/rubric/files",
+          "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/rubric/files",
           { path: "", entries: [] },
         );
       },
       [null, "m-1"],
     );
-    await waitFor(() => shows("CASE-005") && hasButton("下一页"), "the merged case list");
-    const visibleIds = () =>
-      [...document.querySelectorAll("[data-tooltip-content=text]")]
-        .map((el) => el.getAttribute("data-tooltip"))
-        .filter((id) => id?.startsWith("CASE-"));
-    expect(visibleIds()).toEqual(local);
-    await click(button("下一页"));
-    await waitFor(() => shows("CASE-006-report"));
-    expect(visibleIds()).toEqual(["CASE-006-report"]);
+    await waitFor(() => shows("Conflicting sources"), "the case list");
 
-    await click(button(`CASE-006-report${zh.benchmark.viewCase}`));
+    await click(button(`Conflicting sources${zh.benchmark.viewCase}`));
 
     await waitFor(
       () =>
         server.seen(
           "GET",
-          "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-006-report/files",
+          "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/files",
         ).length > 0,
       "the statement listing from the machine",
     );
     expect(
       server.seen(
         "GET",
-        "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-006-report/rubric/files",
+        "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/rubric/files",
       ),
     ).toHaveLength(1);
   });
