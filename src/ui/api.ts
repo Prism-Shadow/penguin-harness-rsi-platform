@@ -135,6 +135,8 @@ export function projectApi(projectId: string) {
     /** A Benchmark's cases in this server's copy (null), or in one machine's. */
     cases: (benchmarkId: string, machineId: string | null = null) =>
       call<BenchmarkCasesResponse>("GET", of(`${one(benchmarkId)}/cases`, machineId)),
+    casePage: (benchmarkId: string, page: number) =>
+      call<BenchmarkCasesResponse>("GET", `${one(benchmarkId)}/cases?page=${page}`),
     caseFiles: (
       benchmarkId: string,
       caseId: string,

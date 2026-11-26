@@ -140,6 +140,29 @@ describe("a Benchmark's page", () => {
     await waitFor(() => shows(zh.benchmark.notFound), "the not-found notice");
   });
 
+  it("requests case pages as the reader navigates", async () => {
+    const path = "/api/projects/proj/benchmarks/sec-a/cases";
+    const { server } = await openPage(benchmark({ caseCount: 7 }), (s) => {
+      s.on("GET", path, ({ query }) => {
+        const ids = query.get("page") === "1" ? [1, 2, 3, 4, 5] : [6, 7];
+        return json({
+          total: 7,
+          cases: ids.map((i) => ({ id: `CASE-${i}`, title: `Question ${i}` })),
+        });
+      });
+    });
+    const pages = () => server.seen("GET", path).map((request) => request.query.get("page"));
+    await waitFor(() => shows("Question 5"));
+    expect(pages()).toEqual(["1"]);
+    expect(shows("Question 6")).toBe(false);
+    await click(button("下一页"));
+    await waitFor(() => shows("Question 7"));
+    expect(shows("Question 5")).toBe(false);
+    await click(button("上一页"));
+    await waitFor(() => shows("Question 1"));
+    expect(pages()).toEqual(["1", "2", "1"]);
+  });
+
   it("reads a case's files from the machine that listed it, through the proxy", async () => {
     const { server } = await openPage(
       benchmark(),

@@ -48,6 +48,7 @@ import type {
   CaseFilesResponse,
   CaseMaterial,
 } from "../api.js";
+import { casePage } from "../api.js";
 import { packBenchmark, readBenchmarkArchive } from "./archive.js";
 import { WorkbenchError } from "./errors.js";
 import type { CaseFileContent, CaseFiles } from "./host.js";
@@ -451,9 +452,15 @@ export class BenchmarkStore {
     };
   }
 
-  async listCases(projectId: string, benchmarkId: string): Promise<BenchmarkCasesResponse> {
+  async listCases(
+    projectId: string,
+    benchmarkId: string,
+    page?: number,
+  ): Promise<BenchmarkCasesResponse> {
     const baseDir = await this.dir(projectId);
     const benchDir = path.join(baseDir, benchmarkId);
+    const empty: BenchmarkCasesResponse =
+      page === undefined ? { cases: [] } : { cases: [], total: 0 };
     let entries: Array<{ name: string; isDirectory(): boolean }>;
     let realBaseDir: string;
     let realBenchDir: string;
@@ -464,14 +471,15 @@ export class BenchmarkStore {
         fs.realpath(benchDir),
       ]);
     } catch {
-      return { cases: [] };
+      return empty;
     }
-    if (!isWithin(realBaseDir, realBenchDir)) return { cases: [] };
+    if (!isWithin(realBaseDir, realBenchDir)) return empty;
 
-    const cases: BenchmarkCaseSummary[] = [];
-    for (const entry of entries
+    const ordered = entries
       .filter((item) => item.isDirectory() && item.name.startsWith("CASE-"))
-      .sort((a, b) => a.name.localeCompare(b.name))) {
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const cases: BenchmarkCaseSummary[] = [];
+    for (const entry of page === undefined ? ordered : casePage(ordered, page)) {
       const fallback: BenchmarkCaseSummary = { id: entry.name, title: entry.name };
       try {
         const statementDir = await this.caseMaterialRoot(
@@ -490,7 +498,7 @@ export class BenchmarkStore {
         cases.push(fallback);
       }
     }
-    return { cases };
+    return page === undefined ? { cases } : { cases, total: ordered.length };
   }
 
   async listCaseFiles(

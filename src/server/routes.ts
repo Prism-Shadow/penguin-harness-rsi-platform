@@ -554,7 +554,14 @@ export function workbenchRoutes(deps: WorkbenchRouteDeps): Hono<RouteEnv> {
     const { projectId } = projectOf(c, deps);
     const benchmarkId = requireValidId(c, "benchmarkId");
     const machineId = c.req.query("machine");
-    if (machineId === undefined) return c.json(await deps.store.listCases(projectId, benchmarkId));
+    if (machineId === undefined) {
+      const raw = c.req.query("page");
+      const page = raw === undefined ? undefined : Number(raw);
+      if (page !== undefined && (!Number.isSafeInteger(page) || page < 1)) {
+        throw badRequest("page must be a positive integer.");
+      }
+      return c.json(await deps.store.listCases(projectId, benchmarkId, page));
+    }
     const cases = await fromMachine(
       c,
       deps,

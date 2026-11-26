@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import type {
-  BenchmarkCaseSummary,
+  BenchmarkCasesResponse,
   BenchmarkSummary,
   MergedCase,
   WorkbenchBenchmarksResponse,
@@ -142,6 +142,7 @@ export function useBenchmarkSources(
 export interface CasesView {
   /** The cases every copy that answered holds, merged; null until one has answered. */
   cases: MergedCase[] | null;
+  total?: number;
   /** Why the first copy could not be read, once every copy failed. */
   error: unknown;
 }
@@ -154,13 +155,17 @@ export function useBenchmarkCases(
   api: ProjectApi,
   benchmarkId: string,
   machineIds: readonly (string | null)[],
+  localPage?: number,
 ): CasesView {
-  const key = machineIds.map((m) => m ?? "").join(",");
+  const key = JSON.stringify(machineIds);
   const sources = useMemo(() => [...machineIds], [key]);
-  const { answers, out, failures } = useFanOut<{ cases: BenchmarkCaseSummary[] }>(
+  const { answers, out, failures } = useFanOut<BenchmarkCasesResponse>(
     sources,
-    (machineId) => api.cases(benchmarkId, machineId),
-    benchmarkId,
+    (machineId) =>
+      localPage === undefined
+        ? api.cases(benchmarkId, machineId)
+        : api.casePage(benchmarkId, localPage),
+    localPage === undefined ? benchmarkId : `${benchmarkId}/${localPage}`,
     key,
   );
   return useMemo(() => {
@@ -168,7 +173,9 @@ export function useBenchmarkCases(
       const answer = answers.get(machineId);
       return answer === undefined ? [] : [{ machineId, cases: answer.cases }];
     });
-    if (answered.length > 0) return { cases: mergeBenchmarkCases(answered), error: null };
+    if (answered.length > 0) {
+      return { cases: mergeBenchmarkCases(answered), total: answers.get(null)?.total, error: null };
+    }
     if (out.size === 0 && sources.length > 0) {
       return { cases: null, error: failures.get(sources[0]!) ?? null };
     }

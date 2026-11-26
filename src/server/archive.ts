@@ -13,7 +13,7 @@
  * file is refused wherever it is: fflate hands every entry back as plain bytes, so the type is
  * read from the central directory.
  *
- * Both directions hold the same caps — 1000 files, 5MB a file and 20MB inflated (the declared
+ * Both directions hold the same byte caps — 5MB a file and 20MB inflated (the declared
  * sizes, checked before anything inflates), 14MB zipped — and the same manifest rules (the format's
  * checkBenchmarkManifest on top of what the list reads), so whatever Export produces, Import
  * takes back. Nothing in a package is ever executed: it is Markdown and the small files its cases
@@ -34,14 +34,13 @@ import { isValidId } from "../format/ids.js";
 import { WorkbenchError } from "./errors.js";
 import {
   MAX_ARCHIVE_BYTES,
-  MAX_ARCHIVE_FILES,
   MAX_FILE_BYTES,
   MAX_TOTAL_BYTES,
   assertDistinctPaths,
   assertSafeEntryPath,
   CONTROL_CHARACTER,
-  specialEntries,
   unzipBounded,
+  withZip64FileCount,
 } from "./zip-guards.js";
 
 /** A case's directory: `CASE-` and the id alphabet, the create route's rule for a case id. */
@@ -99,10 +98,10 @@ function declaredId(text: string): string {
 
 /**
  * Reads an uploaded zip as a Benchmark package, or refuses it. In order: the zipped size (413
- * `benchmark_too_large` over 14MB; an empty upload is 400 `benchmark_archive_invalid`), the caps
- * read off the central directory before inflating (413), every entry's path (zip-slip, control
- * characters) and type (no links), the layout (`benchmark_config.toml` at the root, where it must
- * then name its id, or exactly one top-level directory holding it, whose name must then be the
+ * `benchmark_too_large` over 14MB; an empty upload is 400 `benchmark_archive_invalid`), the
+ * directory and file types (400), the caps checked before each entry is inflated (413), every
+ * entry's path (zip-slip, control characters), the layout (`benchmark_config.toml` at the root,
+ * where it must name its id, or exactly one top-level directory holding it, whose name must be the
  * manifest's id), what the package may hold (above), names a disk that ignores letter case would
  * take for one, the manifest (the format's parser, then the limits a written manifest keeps; their
  * error code and message, 400), its status (400 `benchmark_not_published` unless `published`: a
@@ -126,12 +125,6 @@ export function readBenchmarkArchive(archive: Uint8Array): BenchmarkPackage {
     if (CONTROL_CHARACTER.test(name)) {
       throw archiveInvalid(`Invalid zip entry path (control character): ${JSON.stringify(name)}`);
     }
-  }
-  const special = specialEntries(archive);
-  if (special.length > 0) {
-    throw archiveInvalid(
-      `A package holds regular files only; this entry is a link or a special file: ${special[0]}`,
-    );
   }
   const files = Object.entries(entries).filter(([name]) => !name.endsWith("/"));
   if (files.length === 0) throw archiveInvalid("The zip archive contains no files.");
@@ -232,17 +225,14 @@ export async function packBenchmark(
   manifest: BenchmarkManifest,
 ): Promise<Uint8Array> {
   const out: Record<string, Uint8Array> = {};
-  let count = 0;
   let total = 0;
   const tooLarge = () =>
     benchmarkTooLarge(
-      `Benchmark exceeds the package limits (${MAX_ARCHIVE_FILES} files, 5MB per file, 20MB in all, 14MB zipped).`,
+      "Benchmark exceeds the package limits (5MB per file, 20MB in all, 14MB zipped).",
     );
   const add = (rel: string, data: Uint8Array) => {
-    count += 1;
     total += data.byteLength;
-    if (count > MAX_ARCHIVE_FILES || data.byteLength > MAX_FILE_BYTES) throw tooLarge();
-    if (total > MAX_TOTAL_BYTES) throw tooLarge();
+    if (data.byteLength > MAX_FILE_BYTES || total > MAX_TOTAL_BYTES) throw tooLarge();
     out[`${manifest.id}/${rel}`] = data;
   };
   const walk = async (abs: string, rel: string): Promise<void> => {
@@ -270,7 +260,7 @@ export async function packBenchmark(
       await walk(path.join(benchDir, entry.name), entry.name);
     }
   }
-  const zip = zipSync(out, { mtime: packageMtime() });
+  const zip = withZip64FileCount(zipSync(out, { mtime: packageMtime() }), Object.keys(out).length);
   if (zip.byteLength > MAX_ARCHIVE_BYTES) throw tooLarge();
   return zip;
 }
