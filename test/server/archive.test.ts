@@ -220,8 +220,9 @@ describe("benchmark packages", () => {
     });
 
     it("imports and exports 500 cases and reads only the requested page's statements", async () => {
+      const dataUrl = "https://github.com/Prism-Shadow/swe-bench-verified";
       const files: Record<string, Uint8Array> = {
-        "benchmark_config.toml": strToU8(stringifyToml(manifest("large"))),
+        "benchmark_config.toml": strToU8(stringifyToml(manifest("large", { data_url: dataUrl }))),
       };
       for (let i = 1; i <= 500; i++) {
         const id = `CASE-${String(i).padStart(3, "0")}`;
@@ -248,6 +249,7 @@ describe("benchmark packages", () => {
       const exported = await member.get(`${base}/large/archive`);
       expect(exported.status).toBe(200);
       const entries = unzipSync(new Uint8Array(await exported.arrayBuffer()));
+      expect(parseToml(strFromU8(entries["large/benchmark_config.toml"]!)).data_url).toBe(dataUrl);
       expect(Object.keys(entries).sort()).toEqual(
         Object.keys(files)
           .map((name) => `large/${name}`)

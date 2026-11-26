@@ -108,6 +108,7 @@ describe("benchmark_config.toml", () => {
       titleZh: "报告写作",
       lastUpdate: "2026-10-30T12:00:00Z",
       author: { name: "Prism-Shadow", homepage: "https://github.com/Prism-Shadow" },
+      dataUrl: "https://github.com/Prism-Shadow/gdpevo-essential",
       references: [
         "https://papers.example.com/abs/2608.03764",
         "https://github.com/Prism-Shadow/GDPevo",
@@ -117,11 +118,12 @@ describe("benchmark_config.toml", () => {
     await writeBenchmarkManifest(dir, written);
 
     expect(await readBenchmarkManifest(dir)).toEqual(written);
-    const { titleZh, lastUpdate, ...rest } = written;
+    const { titleZh, lastUpdate, dataUrl, ...rest } = written;
     expect(parseToml(await readRaw(dir))).toEqual({
       ...rest,
       title_zh: titleZh,
       last_update: lastUpdate,
+      data_url: dataUrl,
     });
   });
 
@@ -206,6 +208,7 @@ describe("benchmark_config.toml", () => {
       "benchmark_manifest_invalid",
     ],
     ["an invalid update timestamp", 'last_update = "yesterday"\n', "benchmark_manifest_invalid"],
+    ["an invalid data URL", 'data_url = "invalid"\n', "benchmark_manifest_invalid"],
     [
       "a reference that is not an http(s) link",
       'references = ["javascript:alert(1)"]\n',
