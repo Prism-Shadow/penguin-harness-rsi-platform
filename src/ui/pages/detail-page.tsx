@@ -224,7 +224,7 @@ export function DetailPage({
       />
     );
   } else {
-    body = <BenchmarkDetail benchmark={benchmark} />;
+    body = <BenchmarkDetail key={benchmark.id} benchmark={benchmark} />;
   }
 
   return (

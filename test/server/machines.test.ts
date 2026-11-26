@@ -173,4 +173,18 @@ describe("benchmarks across machines", () => {
       { id: "CASE-003-c", title: "CASE-003-c on Shared there", machineId: "m1" },
     ]);
   });
+
+  it("pages and selects cases through a machine that supports either the new or old list API", async () => {
+    const cases = `${LIST}/shared/cases?machine=m1`;
+    const request = machine.request.bind(machine);
+    for (const legacy of [false, true]) {
+      machine.request = (method, url, ...rest) =>
+        request(method, legacy ? url.split("?")[0]! : url, ...rest);
+      expect(await read(`${cases}&index=1`)).toEqual({ ids: ["CASE-002-b", "CASE-003-c"] });
+      expect(await read(`${cases}&page=2`)).toEqual({ cases: [], total: 2 });
+      expect(await read(`${cases}&id=CASE-003-c`)).toEqual({
+        cases: [{ id: "CASE-003-c", title: "CASE-003-c on Shared there" }],
+      });
+    }
+  });
 });

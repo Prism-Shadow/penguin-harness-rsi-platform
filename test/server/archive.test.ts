@@ -29,7 +29,7 @@
  *   level, a draft, a case without both READMEs, a directory named other than its id or by no id,
  *   a manifest at the root that names no id, one that is not TOML or is past the create form's
  *   limits, two top-level directories, bytes that are not a zip, an empty upload. One past the caps
- *   (over 14MB zipped, more than 1000 files, an entry declaring more than it may inflate to) is a
+ *   (over 14MB zipped, an entry declaring more than it may inflate to) is a
  *   413.
  * - When a Benchmark has no package to give (a draft or a failed one, a manifest that cannot be
  *   read or is past what an import takes), the export answers 409 with the reason; a missing one
@@ -41,7 +41,11 @@ import { strFromU8, strToU8, unzipSync, type Zippable } from "fflate";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { parse as parseYaml } from "yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BenchmarkArchiveImportResponse, BenchmarksResponse } from "../../src/api.js";
+import type {
+  BenchmarkArchiveImportResponse,
+  BenchmarkCasesResponse,
+  BenchmarksResponse,
+} from "../../src/api.js";
 import { entriesOf, exists, write } from "../helpers/files.js";
 import { canCreateSymlink, createTestHost, type TestHost } from "../helpers/host.js";
 import { switchTimeZone } from "../helpers/time-zone.js";
@@ -211,6 +215,34 @@ describe("benchmark packages", () => {
 
       expect(res.status).toBe(201);
       expect((await list()).map((b) => [b.id, b.caseCount])).toEqual([["report-writing-v1", 2]]);
+    });
+
+    it("imports 500 cases and reads only the requested page's statements", async () => {
+      const files: Record<string, Uint8Array> = {
+        "benchmark_config.toml": strToU8(stringifyToml(manifest("large"))),
+      };
+      for (let i = 1; i <= 500; i++) {
+        const id = `CASE-${String(i).padStart(3, "0")}`;
+        files[`${id}/statement/README.md`] = strToU8(`# Question ${i}`);
+        files[`${id}/rubric/README.md`] = strToU8("One point.");
+        files[`${id}/task_config.toml`] = strToU8(`id = "${id}"`);
+      }
+      expect((await importZip({ dataBase64: zipB64(files) })).status).toBe(201);
+      const read = vi.spyOn(fs, "open");
+      try {
+        for (const page of [1, 2, 100]) {
+          read.mockClear();
+          const res = await member.get(`${base}/large/cases?page=${page}`);
+          const { cases, total } = (await res.json()) as BenchmarkCasesResponse;
+          expect(total).toBe(500);
+          expect(cases.map((c) => c.title)).toEqual(
+            Array.from({ length: 5 }, (_, i) => `Question ${(page - 1) * 5 + i + 1}`),
+          );
+          expect(read).toHaveBeenCalledTimes(5);
+        }
+      } finally {
+        read.mockRestore();
+      }
     });
 
     it("a package whose manifest predates id, version and origin imports under its directory's name, unversioned, and its copy names the id", async () => {
@@ -554,18 +586,6 @@ describe("benchmark packages", () => {
       [
         "base64 longer than any zip within 14MB encodes to",
         () => Buffer.alloc(14 * 1024 * 1024 + 4).toString("base64"),
-        413,
-        "benchmark_too_large",
-      ],
-      [
-        "more than 1000 files",
-        () => {
-          const many: Record<string, Uint8Array> = {};
-          for (let i = 0; i < 1000; i++) {
-            many[`report-writing-v1/CASE-001-contradictions/statement/many/${i}.md`] = strToU8("x");
-          }
-          return withEntries(many);
-        },
         413,
         "benchmark_too_large",
       ],

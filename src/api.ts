@@ -132,6 +132,15 @@ export interface BenchmarkCaseSummary {
 
 export interface BenchmarkCasesResponse {
   cases: BenchmarkCaseSummary[];
+  /** Number of cases in the copy, included on paged reads. */
+  total?: number;
+}
+
+export const CASES_PER_PAGE = 5;
+
+/** The cases on a one-based page, in their existing order. */
+export function casePage<T>(items: T[], page: number): T[] {
+  return items.slice((page - 1) * CASES_PER_PAGE, page * CASES_PER_PAGE);
 }
 
 /** POST …/benchmarks (owner only): create a Benchmark by hand. */

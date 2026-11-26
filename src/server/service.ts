@@ -40,7 +40,6 @@ import { SCOREBOARD_FILE, emptyScoreboard, parseScoreboard } from "../format/sco
 import type {
   BenchmarkArchiveGitOrigin,
   BenchmarkCaseSummary,
-  BenchmarkCasesResponse,
   BenchmarkEvaluation,
   BenchmarkOrigin,
   BenchmarkSummary,
@@ -451,7 +450,7 @@ export class BenchmarkStore {
     };
   }
 
-  async listCases(projectId: string, benchmarkId: string): Promise<BenchmarkCasesResponse> {
+  async caseIds(projectId: string, benchmarkId: string): Promise<string[]> {
     const baseDir = await this.dir(projectId);
     const benchDir = path.join(baseDir, benchmarkId);
     let entries: Array<{ name: string; isDirectory(): boolean }>;
@@ -464,33 +463,32 @@ export class BenchmarkStore {
         fs.realpath(benchDir),
       ]);
     } catch {
-      return { cases: [] };
+      return [];
     }
-    if (!isWithin(realBaseDir, realBenchDir)) return { cases: [] };
-
-    const cases: BenchmarkCaseSummary[] = [];
-    for (const entry of entries
+    if (!isWithin(realBaseDir, realBenchDir)) return [];
+    return entries
       .filter((item) => item.isDirectory() && item.name.startsWith("CASE-"))
-      .sort((a, b) => a.name.localeCompare(b.name))) {
-      const fallback: BenchmarkCaseSummary = { id: entry.name, title: entry.name };
+      .map((entry) => entry.name)
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  async caseSummaries(
+    projectId: string,
+    benchmarkId: string,
+    ids: string[],
+  ): Promise<BenchmarkCaseSummary[]> {
+    const cases: BenchmarkCaseSummary[] = [];
+    for (const id of ids) {
       try {
-        const statementDir = await this.caseMaterialRoot(
-          projectId,
-          benchmarkId,
-          entry.name,
-          "statement",
-        );
+        const statementDir = await this.caseMaterialRoot(projectId, benchmarkId, id, "statement");
         const realReadme = await fs.realpath(path.join(statementDir, "README.md"));
         if (!isWithin(statementDir, realReadme)) throw new Error("README escapes Statement");
-        cases.push({
-          id: entry.name,
-          title: await readStatementTitle(realReadme, entry.name),
-        });
+        cases.push({ id, title: await readStatementTitle(realReadme, id) });
       } catch {
-        cases.push(fallback);
+        cases.push({ id, title: id });
       }
     }
-    return { cases };
+    return cases;
   }
 
   async listCaseFiles(
@@ -534,7 +532,7 @@ export class BenchmarkStore {
         fs.realpath(materialRoot),
       ]);
       // Every level stays where its name puts it: a Benchmark folder that links out of the
-      // Project's Benchmark folder serves no files, as it lists no cases (listCases).
+      // Project's Benchmark folder serves no files, as it lists no cases.
       if (
         !isWithin(realBaseDir, realBenchDir) ||
         !isWithin(realBenchDir, realCaseDir) ||

@@ -11,11 +11,12 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import type {
-  BenchmarkCaseSummary,
+  BenchmarkCasesResponse,
   BenchmarkSummary,
   MergedCase,
   WorkbenchBenchmarksResponse,
 } from "../api";
+import { casePage } from "../api";
 import { mergeBenchmarkCases, mergeBenchmarks } from "../merge";
 import type { ProjectApi } from "./api";
 
@@ -142,6 +143,7 @@ export function useBenchmarkSources(
 export interface CasesView {
   /** The cases every copy that answered holds, merged; null until one has answered. */
   cases: MergedCase[] | null;
+  total?: number;
   /** Why the first copy could not be read, once every copy failed. */
   error: unknown;
 }
@@ -154,24 +156,85 @@ export function useBenchmarkCases(
   api: ProjectApi,
   benchmarkId: string,
   machineIds: readonly (string | null)[],
+  selection?: number | ReadonlyMap<string | null, string[]>,
 ): CasesView {
-  const key = machineIds.map((m) => m ?? "").join(",");
+  const key = JSON.stringify(machineIds);
   const sources = useMemo(() => [...machineIds], [key]);
-  const { answers, out, failures } = useFanOut<{ cases: BenchmarkCaseSummary[] }>(
-    sources,
-    (machineId) => api.cases(benchmarkId, machineId),
+  const scope = JSON.stringify([
     benchmarkId,
+    typeof selection === "number" ? selection : selection && [...selection],
+  ]);
+  const { answers, out, failures } = useFanOut<BenchmarkCasesResponse>(
+    sources,
+    (machineId) =>
+      api.cases(
+        benchmarkId,
+        machineId,
+        typeof selection === "number" ? selection : selection?.get(machineId),
+      ),
+    scope,
     key,
   );
   return useMemo(() => {
     const answered = sources.flatMap((machineId) => {
       const answer = answers.get(machineId);
-      return answer === undefined ? [] : [{ machineId, cases: answer.cases }];
+      return answer === undefined ? [] : [{ machineId, ...answer }];
     });
-    if (answered.length > 0) return { cases: mergeBenchmarkCases(answered), error: null };
+    if (answered.length > 0) {
+      return {
+        cases: mergeBenchmarkCases(answered),
+        total: answered[0]!.total,
+        error: null,
+      };
+    }
     if (out.size === 0 && sources.length > 0) {
       return { cases: null, error: failures.get(sources[0]!) ?? null };
     }
     return { cases: null, error: null };
   }, [sources, answers, out, failures]);
+}
+
+/** A single copy can page directly. Overlapping copies need their IDs to count each case once
+ * and pick its source before reading the titles on the requested page. */
+export function useBenchmarkCasePage(
+  api: ProjectApi,
+  benchmarkId: string,
+  machineIds: readonly (string | null)[],
+  page: number,
+): CasesView {
+  const multiple = machineIds.length > 1;
+  const index = useFanOut(
+    multiple ? machineIds : [],
+    (source) => api.caseIds(benchmarkId, source),
+    benchmarkId,
+    JSON.stringify(multiple ? machineIds : []),
+  );
+  const ordered = useMemo(() => {
+    const byId = new Map<string, string | null>();
+    for (const source of machineIds) {
+      for (const id of index.answers.get(source)?.ids ?? []) {
+        if (!byId.has(id)) byId.set(id, source);
+      }
+    }
+    return [...byId];
+  }, [machineIds, index.answers]);
+  const bySource = new Map<string | null, string[]>();
+  for (const [id, source] of casePage(ordered, page)) {
+    const group = bySource.get(source);
+    if (group) group.push(id);
+    else bySource.set(source, [id]);
+  }
+  const result = useBenchmarkCases(
+    api,
+    benchmarkId,
+    multiple ? [...bySource.keys()] : machineIds,
+    multiple ? bySource : page,
+  );
+  if (!multiple) return result;
+  if (index.answers.size === 0)
+    return {
+      cases: null,
+      error: index.out.size ? null : (index.failures.get(machineIds[0]!) ?? null),
+    };
+  return { ...result, cases: bySource.size ? result.cases : [], total: ordered.length };
 }

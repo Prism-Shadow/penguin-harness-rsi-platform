@@ -13,7 +13,7 @@
  * file is refused wherever it is: fflate hands every entry back as plain bytes, so the type is
  * read from the central directory.
  *
- * Both directions hold the same caps — 1000 files, 5MB a file and 20MB inflated (the declared
+ * Both directions hold the same byte caps — 5MB a file and 20MB inflated (the declared
  * sizes, checked before anything inflates), 14MB zipped — and the same manifest rules (the format's
  * checkBenchmarkManifest on top of what the list reads), so whatever Export produces, Import
  * takes back. Nothing in a package is ever executed: it is Markdown and the small files its cases

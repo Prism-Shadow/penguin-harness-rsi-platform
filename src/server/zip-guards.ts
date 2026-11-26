@@ -1,9 +1,7 @@
 /**
  * The caps and checks a Benchmark package's zip is held to, both ways. Copied from the harness's
  * archive guards (packages/server services/skill-import-limits.ts and zip-entries.ts), which a
- * plugin cannot import until the server face exports them; the numbers are the same, so a package
- * that crosses between this plugin and a harness that still reads Benchmarks itself is judged
- * alike.
+ * plugin cannot import until the server face exports them.
  */
 import { strFromU8, unzipSync } from "fflate";
 import { WorkbenchError } from "./errors.js";
@@ -12,10 +10,7 @@ import { WorkbenchError } from "./errors.js";
 export const MAX_ARCHIVE_BYTES = 14 * 1024 * 1024;
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
-/**
- * A package's file cap. Each case carries its statement's and its rubric's materials, so a
- * package of ten cases outgrows a Skill's cap long before it nears the byte caps.
- */
+/** Maximum files when exporting a package. */
 export const MAX_ARCHIVE_FILES = 1000;
 
 function archiveInvalid(message: string): WorkbenchError {
@@ -48,15 +43,10 @@ export function unzipBounded(
   archive: Uint8Array,
   tooLarge: (message: string) => WorkbenchError,
 ): Record<string, Uint8Array> {
-  let files = 0;
   let declared = 0;
   return unzipSync(archive, {
     filter: ({ name, originalSize }) => {
       if (name.endsWith("/")) return false;
-      files += 1;
-      if (files > MAX_ARCHIVE_FILES) {
-        throw tooLarge(`The zip archive exceeds the ${MAX_ARCHIVE_FILES}-file limit.`);
-      }
       if (originalSize > MAX_FILE_BYTES) {
         throw tooLarge(`Zip entry exceeds the 5MB uncompressed limit: ${name}`);
       }
@@ -92,8 +82,17 @@ export function specialEntries(zip: Uint8Array): string[] {
     }
   }
   if (end < 0) return [];
-  const count = view.getUint16(end + 10, true);
+  let count = view.getUint16(end + 10, true);
   let at = view.getUint32(end + 16, true);
+  // ZIP64 carries the full entry count and directory offset in its own end record.
+  if (end >= 20 && view.getUint32(end - 20, true) === 0x07064b50) {
+    const record = Number(view.getBigUint64(end - 12, true));
+    if (record + 56 > end - 20 || view.getUint32(record, true) !== 0x06064b50) {
+      throw archiveInvalid("Invalid ZIP64 end record.");
+    }
+    count = Number(view.getBigUint64(record + 32, true));
+    at = Number(view.getBigUint64(record + 48, true));
+  }
   const found: string[] = [];
   for (let n = 0; n < count && at + 46 <= zip.byteLength; n++) {
     if (view.getUint32(at, true) !== 0x02014b50) break;

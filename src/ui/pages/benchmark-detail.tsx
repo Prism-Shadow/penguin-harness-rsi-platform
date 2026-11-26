@@ -32,8 +32,9 @@ import {
   type ChartPaint,
 } from "@prismshadow/penguin-ui";
 import type { AskCaseFacts, MergedBenchmark, MergedCase, MergedEvaluation } from "../../api";
+import { CASES_PER_PAGE } from "../../api";
 import { useStrings, useWorkbench } from "../context";
-import { useBenchmarkCases } from "../sources";
+import { useBenchmarkCasePage, useBenchmarkCases } from "../sources";
 import { formatDateTime, formatMoney, formatScore, humanizeDuration } from "../format";
 import {
   benchmarkDescription,
@@ -245,35 +246,34 @@ function caseFacts(caseId: string, evaluations: readonly MergedEvaluation[]): As
   };
 }
 
-/** Cases per page of the list: a Benchmark of many cases pages them, each case one line. */
-const CASES_PER_PAGE = 5;
-
 function CasesSection({
   cases,
   error,
+  page,
+  pageCount,
+  onChangePage,
   onOpenCase,
 }: {
   cases: readonly MergedCase[] | null;
   error: string | null;
+  page: number;
+  pageCount: number;
+  onChangePage: (page: number) => void;
   onOpenCase: (caseId: string) => void;
 }) {
   const s = useStrings();
-  const [page, setPage] = useState(0);
-  const pageCount = Math.max(1, Math.ceil((cases?.length ?? 0) / CASES_PER_PAGE));
-  const current = Math.min(page, pageCount - 1);
-  const shown = cases?.slice(current * CASES_PER_PAGE, (current + 1) * CASES_PER_PAGE);
   return (
     <section>
       <div className="mb-1 flex items-center justify-between gap-2 border-b border-line pb-1">
         <p className="text-xs font-semibold text-fg-muted">{s.benchmark.cases}</p>
-        {pageCount > 1 && <Pager page={current} pageCount={pageCount} onChange={setPage} />}
+        {pageCount > 1 && <Pager page={page} pageCount={pageCount} onChange={onChangePage} />}
       </div>
       {error !== null && <FailureLine text={error} className="px-1 py-2" />}
       {cases === null && error === null && (
         <p className="px-1 py-2 text-xs text-fg-subtle">{s.common.loading}</p>
       )}
       <ul>
-        {shown?.map((item) => (
+        {cases?.map((item) => (
           <li key={item.id}>
             <button
               type="button"
@@ -302,9 +302,10 @@ export function BenchmarkDetail({ benchmark: bm }: { benchmark: MergedBenchmark 
   const s = useStrings();
   const wb = useWorkbench();
   const description = benchmarkDescription(bm, wb.locale);
-  // Asked of the servers holding a copy — this server first when it holds one — and merged as
-  // each answers; one more machine's copy asks again with the cases kept.
-  const casesView = useBenchmarkCases(wb.api, bm.id, bm.machineIds);
+  const [page, setPage] = useState(0);
+  const casesView = useBenchmarkCasePage(wb.api, bm.id, bm.machineIds, page + 1);
+  const total = casesView.total ?? bm.caseCount;
+  const pageCount = Math.max(1, Math.ceil(total / CASES_PER_PAGE));
   const cases = casesView.cases;
   const caseError = casesView.error === null ? null : errorText(casesView.error, s);
   const [openCaseId, setOpenCaseId] = useState<string | null>(null);
@@ -313,31 +314,44 @@ export function BenchmarkDetail({ benchmark: bm }: { benchmark: MergedBenchmark 
   /** The case whose Ask AI is open; kept as an id so it cannot outlive its case dialog. */
   const [askingCaseId, setAskingCaseId] = useState<string | null>(null);
 
-  // Another Benchmark starts over.
+  // The last page may disappear if cases were removed between reads.
   useEffect(() => {
-    setOpenCaseId(null);
-    setOpenEvaluation(null);
-    setAskingCaseId(null);
-  }, [wb.projectId, bm.id]);
+    if (casesView.total !== undefined && page >= pageCount) setPage(pageCount - 1);
+  }, [casesView.total, page, pageCount]);
 
   // The scoreboard's append order is the evaluation sequence; the table shows it newest first.
   const evaluations = bm.evaluations;
-  const caseTitles = new Map(cases?.map((item) => [item.id, item.title]) ?? []);
   const openCase = cases?.find((item) => item.id === openCaseId) ?? null;
   const opened = openEvaluation === null ? null : (evaluations[openEvaluation] ?? null);
+  // An evaluation displays all its scored cases, including those outside the current page.
+  const evaluationCases = useBenchmarkCases(
+    wb.api,
+    bm.id,
+    opened?.cases.length ? bm.machineIds : [],
+  );
+  const caseTitles = new Map(
+    (evaluationCases.cases ?? cases)?.map((item) => [item.id, item.title]),
+  );
 
   return (
     <div className="space-y-5">
       <div>
         <p className="text-xs text-fg-muted">
-          {s.benchmark.caseCount(bm.caseCount)} · {s.benchmark.runsPerCase(bm.runs ?? 1)}
+          {s.benchmark.caseCount(total)} · {s.benchmark.runsPerCase(bm.runs ?? 1)}
         </p>
         {description !== undefined && description !== "" && (
           <p className="mt-1 text-sm text-fg-muted">{description}</p>
         )}
       </div>
 
-      <CasesSection cases={cases} error={caseError} onOpenCase={setOpenCaseId} />
+      <CasesSection
+        cases={cases}
+        error={caseError}
+        page={page}
+        pageCount={pageCount}
+        onChangePage={setPage}
+        onOpenCase={setOpenCaseId}
+      />
 
       {evaluations.length === 0 ? (
         <EmptyState title={s.benchmark.noEvaluations} description={s.benchmark.noEvaluationsHint} />
