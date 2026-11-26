@@ -426,6 +426,32 @@ describe("benchmark packages", () => {
       zipB64({ ...packageFiles("report-writing-v1"), ...extra });
     const invalid = "benchmark_archive_invalid";
 
+    it("refuses inconsistent central directory counts and record lengths before import", async () => {
+      const original = Buffer.from(zipSync(packageFiles("report-writing-v1")));
+      const end = original.length - 22;
+      const wrongCounts = [-1, 1].map((difference) => {
+        const zip = Buffer.from(original);
+        const count = original.readUInt16LE(end + 10) + difference;
+        zip.writeUInt16LE(count, end + 8);
+        zip.writeUInt16LE(count, end + 10);
+        return zip;
+      });
+
+      const longRecord = Buffer.from(original);
+      const first = longRecord.readUInt32LE(end + 16);
+      longRecord.writeUInt16LE(end - first, first + 32); // The entry's comment extends beyond the directory.
+
+      for (const zip of [...wrongCounts, longRecord]) {
+        const res = await importZip({ dataBase64: zip.toString("base64") });
+        expect(res.status).toBe(400);
+        expect(await errorOf(res)).toMatchObject({
+          code: invalid,
+          message: "Invalid ZIP central directory.",
+        });
+      }
+      expect(await entriesOf(dir)).toEqual([]);
+    });
+
     const refusals: Array<[string, () => string, number, string]> = [
       [
         "an entry that climbs out of its case (zip-slip)",
@@ -625,17 +651,21 @@ describe("benchmark packages", () => {
   });
 
   describe("export", () => {
-    it("preserves all 65,536 entries when the ZIP32 file count would wrap to zero", () => {
+    it("reads all 65,536 ZIP64 entries and rejects an inconsistent count", () => {
       const files = packageFiles("large", "");
       const fileCount = 65_536;
       const empty = new Uint8Array();
       for (let i = Object.keys(files).length; i < fileCount; i++) {
         files[`CASE-002-format/statement/${i}.txt`] = empty;
       }
-      const zip = withZip64FileCount(zipSync(files, { level: 0 }), fileCount);
+      const compressed = zipSync(files, { level: 0 });
+      const zip = withZip64FileCount(compressed, fileCount);
       const { caseFiles } = readBenchmarkArchive(zip);
       expect(caseFiles.size).toBe(fileCount - 1); // the manifest is separate
       expect(caseFiles.has("CASE-002-format/statement/65535.txt")).toBe(true);
+      expect(() => readBenchmarkArchive(withZip64FileCount(compressed, fileCount - 1))).toThrow(
+        "Invalid ZIP central directory.",
+      );
     });
 
     /**

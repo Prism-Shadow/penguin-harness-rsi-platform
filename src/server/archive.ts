@@ -39,7 +39,6 @@ import {
   assertDistinctPaths,
   assertSafeEntryPath,
   CONTROL_CHARACTER,
-  specialEntries,
   unzipBounded,
   withZip64FileCount,
 } from "./zip-guards.js";
@@ -99,10 +98,10 @@ function declaredId(text: string): string {
 
 /**
  * Reads an uploaded zip as a Benchmark package, or refuses it. In order: the zipped size (413
- * `benchmark_too_large` over 14MB; an empty upload is 400 `benchmark_archive_invalid`), the caps
- * read off the central directory before inflating (413), every entry's path (zip-slip, control
- * characters) and type (no links), the layout (`benchmark_config.toml` at the root, where it must
- * then name its id, or exactly one top-level directory holding it, whose name must then be the
+ * `benchmark_too_large` over 14MB; an empty upload is 400 `benchmark_archive_invalid`), the
+ * directory and file types (400), the caps checked before each entry is inflated (413), every
+ * entry's path (zip-slip, control characters), the layout (`benchmark_config.toml` at the root,
+ * where it must name its id, or exactly one top-level directory holding it, whose name must be the
  * manifest's id), what the package may hold (above), names a disk that ignores letter case would
  * take for one, the manifest (the format's parser, then the limits a written manifest keeps; their
  * error code and message, 400), its status (400 `benchmark_not_published` unless `published`: a
@@ -126,12 +125,6 @@ export function readBenchmarkArchive(archive: Uint8Array): BenchmarkPackage {
     if (CONTROL_CHARACTER.test(name)) {
       throw archiveInvalid(`Invalid zip entry path (control character): ${JSON.stringify(name)}`);
     }
-  }
-  const special = specialEntries(archive);
-  if (special.length > 0) {
-    throw archiveInvalid(
-      `A package holds regular files only; this entry is a link or a special file: ${special[0]}`,
-    );
   }
   const files = Object.entries(entries).filter(([name]) => !name.endsWith("/"));
   if (files.length === 0) throw archiveInvalid("The zip archive contains no files.");

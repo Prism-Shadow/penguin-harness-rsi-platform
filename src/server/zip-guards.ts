@@ -42,7 +42,7 @@ export function unzipBounded(
   tooLarge: (message: string) => WorkbenchError,
 ): Record<string, Uint8Array> {
   let declared = 0;
-  return unzipSync(archive, {
+  return unzipSync(checkCentralDirectory(archive), {
     filter: ({ name, originalSize }) => {
       if (name.endsWith("/")) return false;
       if (originalSize > MAX_FILE_BYTES) {
@@ -90,49 +90,75 @@ export function withZip64FileCount(zip: Uint8Array, fileCount: number): Uint8Arr
  */
 export const CONTROL_CHARACTER = /[\u0000-\u001f\u007f-\u009f]/;
 
-/**
- * The entries a zip records as something other than a regular file or a directory — a symbolic
- * link above all. Only the central directory says so: a Unix zipper (host 3) keeps the entry's
- * `st_mode` in the high half of its external attributes; an archive made elsewhere records no
- * type there, and its entries are plain files. Runs after fflate has read the same archive.
- */
-export function specialEntries(zip: Uint8Array): string[] {
+/** Check the full directory before fflate uses its entry count to drive decompression. */
+function checkCentralDirectory(zip: Uint8Array): Uint8Array {
+  const invalid = () => archiveInvalid("Invalid ZIP central directory.");
   const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
   // The end-of-central-directory record: 22 bytes, then a comment of up to 64KB, at the very end.
   let end = -1;
   for (let i = zip.byteLength - 22; i >= Math.max(0, zip.byteLength - 22 - 0xffff); i--) {
-    if (view.getUint32(i, true) === 0x06054b50) {
+    if (
+      view.getUint32(i, true) === 0x06054b50 &&
+      i + 22 + view.getUint16(i + 20, true) === zip.byteLength
+    ) {
       end = i;
       break;
     }
   }
-  if (end < 0) return [];
+  if (end < 0) throw invalid();
+  let diskCount = view.getUint16(end + 8, true);
   let count = view.getUint16(end + 10, true);
+  let size = view.getUint32(end + 12, true);
   let at = view.getUint32(end + 16, true);
-  // ZIP64 carries the full entry count and directory offset in its own end record.
-  if (end >= 20 && view.getUint32(end - 20, true) === 0x07064b50) {
-    const record = Number(view.getBigUint64(end - 12, true));
-    if (record + 56 > end - 20 || view.getUint32(record, true) !== 0x06064b50) {
-      throw archiveInvalid("Invalid ZIP64 end record.");
+  let directoryEnd = end;
+  const locator = end - 20;
+  if (locator >= 0 && view.getUint32(locator, true) === 0x07064b50) {
+    const record = Number(view.getBigUint64(locator + 8, true));
+    if (
+      record + 56 > locator ||
+      view.getUint32(record, true) !== 0x06064b50 ||
+      view.getBigUint64(record + 4, true) !== BigInt(locator - record - 12)
+    ) {
+      throw invalid();
     }
-    count = Number(view.getBigUint64(record + 32, true));
-    at = Number(view.getBigUint64(record + 48, true));
+    // A ZIP32 field contains either the value itself or the all-ones marker for its ZIP64 value.
+    const expanded = (offset: number, classic: number, marker: number): number => {
+      const value = Number(view.getBigUint64(record + offset, true));
+      if (classic !== marker && classic !== value) throw invalid();
+      return value;
+    };
+    diskCount = expanded(24, diskCount, 0xffff);
+    count = expanded(32, count, 0xffff);
+    size = expanded(40, size, 0xffffffff);
+    at = expanded(48, at, 0xffffffff);
+    directoryEnd = record;
   }
-  const found: string[] = [];
-  for (let n = 0; n < count && at + 46 <= zip.byteLength; n++) {
-    if (view.getUint32(at, true) !== 0x02014b50) break;
+  if (diskCount !== count || at + size !== directoryEnd || count * 46 > size) throw invalid();
+  for (let n = 0; n < count; n++) {
+    if (at + 46 > directoryEnd || view.getUint32(at, true) !== 0x02014b50) throw invalid();
     const host = view.getUint8(at + 5);
     const utf8 = (view.getUint16(at + 8, true) & 0x800) !== 0;
     const nameLength = view.getUint16(at + 28, true);
     const extraLength = view.getUint16(at + 30, true);
     const commentLength = view.getUint16(at + 32, true);
+    const next = at + 46 + nameLength + extraLength + commentLength;
+    if (next > directoryEnd) throw invalid();
     const type = (view.getUint32(at + 38, true) >>> 16) & 0o170000;
     if (host === 3 && type !== 0 && type !== 0o100000 && type !== 0o040000) {
-      found.push(strFromU8(zip.subarray(at + 46, at + 46 + nameLength), !utf8));
+      const name = strFromU8(zip.subarray(at + 46, at + 46 + nameLength), !utf8);
+      throw archiveInvalid(
+        `A package holds regular files only; this entry is a link or a special file: ${name}`,
+      );
     }
-    at += 46 + nameLength + extraLength + commentLength;
+    at = next;
   }
-  return found;
+  // The directory may end with a digital signature after its file headers (APPNOTE §4.3.12).
+  if (at + 6 <= directoryEnd && view.getUint32(at, true) === 0x05054b50) {
+    at += 6 + view.getUint16(at + 4, true);
+  }
+  if (at !== directoryEnd) throw invalid();
+  // Start fflate's footer search at the checked record, even if the archive comment contains a signature.
+  return zip.subarray(0, end + 22);
 }
 
 /**
