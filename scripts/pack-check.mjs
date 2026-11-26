@@ -5,9 +5,13 @@
  *
  * 1. The package a harness build can take as an external built-in plugin (the harness's
  *    scripts/lib/external-plugins.mjs) and the plugin index files as a resource package: no
- *    runtime `dependencies` or `optionalDependencies`, no `main` and no `.` export — `exports`
- *    is `./format` and `./package.json` — and the generated `ifaces.json` among its files.
- * 2. `./format` loads in plain Node, as a consumer imports it.
+ *    runtime `dependencies` or `optionalDependencies`, no `main` and no `.` export — only subpath
+ *    exports: the code of `./format`, `./api` and `./prompts`, the published files of
+ *    `./workbenches/*`, `./icon.svg` and `./package.json` — and the generated `ifaces.json` among
+ *    its files.
+ * 2. Each code export loads in plain Node, as a consumer imports it, with its declarations beside
+ *    it; `./api` and `./prompts` import nothing at all (no `node:` module, no `require`), so a
+ *    browser bundle can take them.
  * 3. The static probe, read without running the package, as the plugin library and the host's lock
  *    read it: `ifaces.json` carries data-only modules (nothing required, provided or bound) whose
  *    contributions are the card (category `rsi`, no `preinstall`, so preinstalled), the Skills
@@ -50,17 +54,46 @@ for (const field of ["dependencies", "optionalDependencies"]) {
   }
 }
 if (pkg.main !== undefined) fail("package.json names a main entry; the package has no code entry");
-const exportKeys = Object.keys(pkg.exports ?? {}).sort();
-if (exportKeys.join(",") !== "./format,./package.json") {
-  fail(`package.json exports ${exportKeys.join(", ")}; it exports ./format and ./package.json`);
+const exportKeys = Object.keys(pkg.exports ?? {});
+if (exportKeys.some((key) => key === "." || !key.startsWith("./"))) {
+  fail(
+    `package.json exports ${exportKeys.join(", ")}: a resource package has subpath exports only`,
+  );
 }
-for (const file of ["ifaces.json", "workbenches", "dist/format"]) {
+/** The code exports: each one's folder under dist/, and a value it must export. */
+const CODE_EXPORTS = [
+  ["./format", "format", "parseScoreboard", false],
+  ["./api", "api", "casePage", true],
+  ["./prompts", "prompts", "buildRequest", true],
+];
+for (const [key, dir] of CODE_EXPORTS) {
+  const entry = pkg.exports[key];
+  if (entry?.import !== `./dist/${dir}/index.js` || entry?.types !== `./dist/${dir}/index.d.ts`) {
+    fail(`package.json does not export ${key} from dist/${dir} with its types`);
+  }
+}
+for (const file of [
+  "ifaces.json",
+  "workbenches",
+  ...CODE_EXPORTS.map(([, dir]) => `dist/${dir}`),
+]) {
   if (!pkg.files.includes(file)) fail(`package.json files does not ship ${file}`);
 }
 
-// 2. `./format` loads on its own.
-const format = await import(pathToFileURL(path.join(ROOT, "dist", "format", "index.js")).href);
-if (typeof format.parseScoreboard !== "function") fail("./format does not export parseScoreboard");
+// 2. Each code export loads on its own; the browser-safe ones import nothing.
+/** An import statement, a re-export from a module, a dynamic import or a require of one. */
+const MODULE_IMPORT =
+  /^\s*(?:import|export)\b[^;]*\bfrom\s*["']|^\s*import\s*["']|\bimport\s*\(\s*["'`]|\brequire\s*\(\s*["'`]/m;
+for (const [key, dir, value, browser] of CODE_EXPORTS) {
+  const file = path.join(ROOT, "dist", dir, "index.js");
+  const loaded = await import(pathToFileURL(file).href);
+  if (typeof loaded[value] !== "function") fail(`${key} does not export ${value}`);
+  if (!(await exists(path.join(ROOT, "dist", dir, "index.d.ts"))))
+    fail(`${key} has no declarations`);
+  if (browser && MODULE_IMPORT.test(await fs.readFile(file, "utf8"))) {
+    fail(`${key} imports a module, which a browser bundle may not resolve`);
+  }
+}
 
 // 3. The static probe.
 const table = JSON.parse(await fs.readFile(path.join(ROOT, "ifaces.json"), "utf8"));
@@ -193,8 +226,7 @@ for (const cwd of [ROOT, ...toolkits]) {
   const required = ["package.json", "LICENSE", "ifaces.json", "icon.svg"];
   if (cwd === ROOT) {
     required.push(
-      "dist/format/index.js",
-      "dist/format/index.d.ts",
+      ...CODE_EXPORTS.flatMap(([, dir]) => [`dist/${dir}/index.js`, `dist/${dir}/index.d.ts`]),
       `${workbenches[0].path}/package.json`,
       `${workbenches[0].path}/index.ts`,
       `${workbenches[0].path}/ui/index.html`,

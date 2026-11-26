@@ -12,8 +12,10 @@
  *                                   (`index.ts`, which keeps the Benchmarks in the workbench's
  *                                   agent-level data folder), its page (`ui/`) and its seeds
  *
- * The package also exports `./format`, the Benchmark manifest and scoreboard format, which the
- * workbench's handler carries a copy of (`workbenches/benchmark/lib/format/`).
+ * The package also exports, as subpaths of its own (it has no `.` export): `./format`, the
+ * Benchmark manifest and scoreboard format, which the workbench's handler carries a copy of
+ * (`workbenches/benchmark/lib/format/`); `./api` and `./prompts`, the handler's HTTP contract and
+ * the prompts its tasks send, built from the workbench folder's own modules; and the folder's files.
  */
 import { Component } from "@prismshadow/penguin-core/plugin";
 import type { Plugin } from "@prismshadow/penguin-core/plugin";

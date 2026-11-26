@@ -22,6 +22,15 @@
 | `PluginLibraryModule.skills` | `benchmark-design` 与 `agent-evaluation` |
 | `PluginLibraryModule.workbenches` | 工作台目录 `workbenches/benchmark/`，安装时复制进 Agent 的 `agent_state/workbenches/benchmark/` |
 
+此外，包以子路径导出以下内容（没有 `.` 导出，也没有 `main`）：
+
+| 导出 | 内容 |
+| --- | --- |
+| `./format` | Benchmark 清单与记分的格式，供 Node 使用（[docs/format.md](docs/format.md)） |
+| `./api` | 处理器的 HTTP 契约，取自 `workbenches/benchmark/lib/api.ts`：其类型、`CASES_PER_PAGE` 与 `casePage`；不导入任何模块，可由浏览器端打包 |
+| `./prompts` | `buildRequest` 与 `TaskSpec`，取自 `workbenches/benchmark/lib/prompts.ts`：各任务发送的提示词；不导入任何模块 |
+| `./workbenches/*`、`./icon.svg` | 发布的文件 |
+
 工作台目录就是工作台运行时的全部，它需要的一切都在其中：
 
 | 路径 | 内容 |
@@ -42,7 +51,7 @@ Node 24、pnpm 11。
 pnpm install --frozen-lockfile
 pnpm typecheck        # 格式副本是最新的、tsc（包、处理器、页面）、按宿主选项编译处理器、各工具包
 pnpm test             # vitest：格式、处理器（替身宿主）、页面（happy-dom）、Skill、脚本
-pnpm build            # tsup（./format）→ vite（workbenches/benchmark/ui/）→ lib/format → ifaces.json → 工具包
+pnpm build            # tsup（./format、./api、./prompts）→ vite（workbenches/benchmark/ui/）→ lib/format → ifaces.json → 工具包
 pnpm format:check
 pnpm pack:check       # 构建后：静态探测，以及两次 npm pack 的 sha512 一致
 ```

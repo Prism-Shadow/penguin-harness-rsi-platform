@@ -33,10 +33,22 @@
       "types": "./dist/format/index.d.ts",
       "import": "./dist/format/index.js"
     },
+    "./api": {
+      "types": "./dist/api/index.d.ts",
+      "import": "./dist/api/index.js"
+    },
+    "./prompts": {
+      "types": "./dist/prompts/index.d.ts",
+      "import": "./dist/prompts/index.js"
+    },
+    "./workbenches/*": "./workbenches/*",
+    "./icon.svg": "./icon.svg",
     "./package.json": "./package.json"
   },
   "files": [
     "dist/format",
+    "dist/api",
+    "dist/prompts",
     "workbenches",
     "skills",
     "ifaces.json",

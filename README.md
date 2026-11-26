@@ -22,6 +22,15 @@ The package is data only: no server module, no code entry, nothing the host adds
 | `PluginLibraryModule.skills` | `benchmark-design` and `agent-evaluation` |
 | `PluginLibraryModule.workbenches` | the workbench folder `workbenches/benchmark/`, which an install copies into the Agent's `agent_state/workbenches/benchmark/` |
 
+Beside it the package exports, all as subpaths (there is no `.` export and no `main`):
+
+| Export | What it is |
+| --- | --- |
+| `./format` | the Benchmark manifest and scoreboard format, for Node ([docs/format.md](docs/format.md)) |
+| `./api` | the handler's HTTP contract, from `workbenches/benchmark/lib/api.ts`: its types, `CASES_PER_PAGE` and `casePage`; imports nothing, so a browser can bundle it |
+| `./prompts` | `buildRequest` and `TaskSpec`, from `workbenches/benchmark/lib/prompts.ts`: the request each task sends; imports nothing |
+| `./workbenches/*`, `./icon.svg` | the published files |
+
 The workbench folder is all the workbench has at runtime, so everything it needs is inside it:
 
 | Path | What it is |
@@ -42,7 +51,7 @@ Node 24 and pnpm 11.
 pnpm install --frozen-lockfile
 pnpm typecheck        # the format copy is current, tsc (package, handler, page), the handler under the host's options, the toolkits
 pnpm test             # vitest: the format, the handler (over a fake host), the page (happy-dom), Skills, scripts
-pnpm build            # tsup (./format) → vite (workbenches/benchmark/ui/) → lib/format → ifaces.json → toolkits
+pnpm build            # tsup (./format, ./api, ./prompts) → vite (workbenches/benchmark/ui/) → lib/format → ifaces.json → toolkits
 pnpm format:check
 pnpm pack:check       # after build: the static probe, and npm pack twice with equal sha512
 ```
