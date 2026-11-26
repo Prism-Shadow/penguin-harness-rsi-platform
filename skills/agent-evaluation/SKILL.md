@@ -1,7 +1,7 @@
 ---
 name: agent-evaluation
 description: Run one specified Test Agent on one specified Benchmark Case exactly once, privately score that execution, and return one protocol result.
-version: 2026.11.20.2
+version: 2026.11.26.1
 ---
 
 # Agent Evaluation
@@ -51,10 +51,10 @@ Use the `App Data Dir` from the Environment, and the Benchmark's folder as the r
 
 ```text
 TEST_AGENT_DIR = <app_data_dir>/agents/<test_agent_id>
-BENCHMARK_DIR  = <benchmark_dir>   # when the request names none: <app_data_dir>/agents/system_agent/app/data/benchmark/<benchmark_id>
+BENCHMARK_DIR  = <benchmark_dir>   # when the request names none: <app_data_dir>/agents/default_agent/app/data/benchmark/<benchmark_id>
 ```
 
-The Benchmark is Project-level and is not owned by the Test Agent: it lives in the Self-Evolution Workbench's data folder, outside every Agent it evaluates, and may evaluate several Agents. `test_agent_id` names the Agent this request evaluates; return it as `agent_id`.
+The Benchmark is not part of the Test Agent's State: it lives in the Self-Evolution Workbench's data folder of the Agent that has the workbench (the default Agent's when the request names none), and may evaluate several Agents. `test_agent_id` names the Agent this request evaluates; return it as `agent_id`.
 
 Reject path traversal, symlink escape, or any resolved path outside the requested Test Agent and Benchmark. Inspect only the requested Agent State, Benchmark config and Case, isolated Test Workspace, and Traces needed to verify this execution. Do not inspect another Agent, Project secrets, hidden configuration, or unrelated Workspaces or Traces.
 

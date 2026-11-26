@@ -1,18 +1,23 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "."
+    "rootDir": ".",
+    // The workbench's handler imports the host's types by the name the host resolves for it
+    // (scripts/check-workbench.mjs says how): the ones a 0.2.19 server writes into the folder.
+    "paths": {
+      "@prismshadow/penguin-server/plugin": ["./test/fixtures/harness-0.2.19/plugin.d.ts"]
+    }
   },
   "include": [
     "src/index.ts",
-    "src/api.ts",
-    "src/merge.ts",
-    "src/server",
     "src/format",
+    "workbenches/benchmark/index.ts",
+    "workbenches/benchmark/lib",
     "test/format",
-    "test/server",
+    "test/workbench",
     "test/skills",
     "test/scripts",
-    "test/helpers"
+    "test/helpers",
+    "test/fixtures"
   ]
 }

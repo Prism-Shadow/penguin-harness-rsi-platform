@@ -2,25 +2,25 @@
  * Importing a Benchmark package from a zip.
  *
  * - Given an upload whose id is taken, the answer is the overwrite question about the id the
- *   server's details name (the picked file's name when they name none); confirming sends the same
- *   zip again with `overwrite`, and the Benchmark comes back as imported.
- * - Given an overwrite refused while the Benchmark is being evaluated, or a zip the server refuses,
- *   the reason comes back to be shown, not the question again.
- * - In the dialog, the overwrite confirm names the id, and confirming it imports and reads the list
- *   again.
+ *   handler's details name (the picked file's name when they name none); confirming sends the
+ *   same zip again with `overwrite`, and the Benchmark comes back as imported.
+ * - Given an overwrite refused while the Benchmark is being evaluated, or a zip the handler
+ *   refuses, the reason comes back to be shown, not the question again.
+ * - In the dialog, which any viewer may open, the overwrite confirm names the id, and confirming it
+ *   imports and reads the list again.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BenchmarkSummary } from "../../src/api";
-import { projectApi } from "../../src/ui/api";
+import { benchmarksApi } from "../../src/ui/api";
 import { uploadBenchmarkArchive } from "../../src/ui/pages/import-dialog";
 import { zh } from "../../src/ui/strings";
 import {
+  BENCHMARKS,
   FakeServer,
   apiError,
   benchmark,
   button,
   click,
-  fakeHost,
   json,
   mountApp,
   serveProject,
@@ -37,7 +37,7 @@ afterEach(async () => {
 });
 
 const ZIP = btoa("PK zip bytes");
-const ARCHIVE = "/api/projects/proj/benchmarks/archive";
+const ARCHIVE = `${BENCHMARKS}/archive`;
 
 const IMPORTED: BenchmarkSummary = {
   id: "report-writing-v1",
@@ -52,7 +52,12 @@ const IMPORTED: BenchmarkSummary = {
 };
 
 const upload = (overwrite: boolean) =>
-  uploadBenchmarkArchive(projectApi("proj"), ZIP, { overwrite, fallbackId: "picked-file" }, zh);
+  uploadBenchmarkArchive(
+    benchmarksApi(BENCHMARKS),
+    ZIP,
+    { overwrite, fallbackId: "picked-file" },
+    zh,
+  );
 
 describe("a zip upload", () => {
   it("whose id is taken asks about the id the answer names, and the confirmed overwrite resends the zip", async () => {
@@ -84,7 +89,7 @@ describe("a zip upload", () => {
     expect(await upload(true)).toEqual({ kind: "refused", text: zh.errors.byCode.benchmark_busy });
   });
 
-  it("that the server refuses comes back with its reason", async () => {
+  it("that the handler refuses comes back with its reason", async () => {
     new FakeServer()
       .on("POST", ARCHIVE, () =>
         apiError(400, "benchmark_case_invalid", "CASE-002-format has no rubric/README.md."),
@@ -107,10 +112,9 @@ describe("the import dialog", () => {
       answered = true;
       return apiError(409, "benchmark_exists", "taken", { benchmarkId: "report-writing-v1" });
     });
-    fakeHost();
     await mountApp();
     await waitFor(() => shows("Sec A"), "the list");
-    const reads = server.seen("GET", "/api/projects/proj/benchmarks").length;
+    const reads = server.seen("GET", BENCHMARKS).length;
 
     await click(button(zh.benchmark.importBenchmark));
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
@@ -126,10 +130,7 @@ describe("the import dialog", () => {
     );
     await click(button(zh.benchmark.importOverwriteAction));
 
-    await waitFor(
-      () => server.seen("GET", "/api/projects/proj/benchmarks").length > reads,
-      "the list read again",
-    );
+    await waitFor(() => server.seen("GET", BENCHMARKS).length > reads, "the list read again");
     await settle();
     expect(server.seen("POST", ARCHIVE)[1]!.body).toMatchObject({ overwrite: true });
     expect(shows(zh.benchmark.importChatTitle)).toBe(false);

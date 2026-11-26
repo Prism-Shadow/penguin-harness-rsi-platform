@@ -1,9 +1,9 @@
 /**
- * The example Benchmark every new Project starts with, as data: its manifest, two sample cases
+ * The example Benchmark every new workbench starts with, as data: its manifest, two sample cases
  * (statement and rubric) and a scoreboard of three sample evaluations of default_agent, so the
  * workbench's charts have data out of the box. Its description says plainly that it is a built-in
- * example to delete or replace. build-seeds.mjs writes it into seeds/benchmark/ beside the
- * built-in Benchmarks. Moved from the harness's core (state/example-benchmark.ts).
+ * example to delete or replace. build-seeds.mjs writes it into workbenches/benchmark/seeds/ beside
+ * the built-in Benchmarks. Moved from the harness's core (state/example-benchmark.ts).
  *
  * Scoring numbers follow the scoreboard contract: every case is scored out of 100; case metrics
  * are model-written run averages and evaluation metrics model-written case averages. Cost ignores

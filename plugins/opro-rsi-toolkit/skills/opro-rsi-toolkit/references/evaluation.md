@@ -12,7 +12,7 @@ PROJECT_ID   = basename of PROJECT_DIR
 PROJECTS_DIR = dirname of PROJECT_DIR      # the folder holding the Project; not the data root
 TARGET       = PROJECT_DIR/agents/<test_agent_id>
 STATE        = TARGET/agent_state
-BENCHMARK    = <benchmark_dir>             # the BENCHMARK_DIR the request names; when it names none, PROJECT_DIR/agents/system_agent/app/data/benchmark/<benchmark_id>
+BENCHMARK    = <benchmark_dir>             # the BENCHMARK_DIR the request names; when it names none, PROJECT_DIR/agents/default_agent/app/data/benchmark/<benchmark_id>
 CASE         = BENCHMARK/<case_id>       # statement/README.md is public; rubric/README.md is private
 SCOREBOARD   = BENCHMARK/scoreboard.yaml
 ```

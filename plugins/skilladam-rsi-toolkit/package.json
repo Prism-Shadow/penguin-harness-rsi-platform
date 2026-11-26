@@ -1,6 +1,6 @@
 {
   "name": "@penguinharness/skilladam-rsi-toolkit",
-  "version": "0.2.19-rc.1",
+  "version": "0.2.19-rc.2",
   "description": "SkillAdam RSI Toolkit: organize benchmark experiments and evolve a target Skill through trajectory feedback, an evolving issue tracker, paired evaluation and a variance-controlled edit budget.",
   "keywords": [
     "penguin-plugin",
@@ -27,9 +27,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "node ../../scripts/gen-ifaces.mjs --project tsconfig.json --out ifaces.json"
+    "build": "penguin-gen-ifaces --project tsconfig.json --out ifaces.json"
   },
   "devDependencies": {
-    "@prismshadow/penguin-core": "0.2.18"
+    "@prismshadow/penguin-core": "0.2.19"
   }
 }

@@ -167,8 +167,8 @@ export function CaseBrowser({ benchmarkId, item }: { benchmarkId: string; item: 
 
   const fileUrl = useCallback(
     (material: CaseMaterial, path: string, mode: "raw" | "preview" | "download" = "raw") =>
-      wb.api.caseFileUrl(benchmarkId, caseId, material, path, machineId, mode),
-    [wb.api, benchmarkId, caseId, machineId],
+      wb.sources.resolved(machineId)?.caseFileUrl(benchmarkId, caseId, material, path, mode) ?? "",
+    [wb.sources, benchmarkId, caseId, machineId],
   );
 
   const loadDir = useCallback(
@@ -179,7 +179,8 @@ export function CaseBrowser({ benchmarkId, item }: { benchmarkId: string; item: 
       const current = () => dirRequest.current.get(treePath) === seq;
       setLoadingDirs((prev) => new Set(prev).add(treePath));
       try {
-        const res = await wb.api.caseFiles(benchmarkId, caseId, material, path, machineId);
+        const api = await wb.sources.resolve(machineId);
+        const res = await api.caseFiles(benchmarkId, caseId, material, path);
         if (!current()) return null;
         setListings((m) => new Map(m).set(treePath, res.entries));
         setListError(null);
@@ -197,7 +198,7 @@ export function CaseBrowser({ benchmarkId, item }: { benchmarkId: string; item: 
         }
       }
     },
-    [wb.api, benchmarkId, caseId, machineId, s],
+    [wb.sources, benchmarkId, caseId, machineId, s],
   );
 
   /** Opens a file in the preview pane: the text kinds are read, the rest are served by URL. */

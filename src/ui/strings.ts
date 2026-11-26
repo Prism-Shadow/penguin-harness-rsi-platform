@@ -1,15 +1,15 @@
 /**
  * The workbench page's words, one table per interface language. The frame reads the language off
- * its root element (`lang`, which the host writes and keeps current), so the page picks a table
- * at render time and never translates anything itself.
+ * its root element (`lang`, which the host writes and keeps current) or its parent's, so the page
+ * picks a table at render time and never translates anything itself.
  *
  * `en` is typed as `Strings`, the shape of `zh`: the compiler refuses a key one table has and the
  * other lacks. The wording comes from the Web App's Evaluation Center dictionaries; what changed
  * with the move is the app's name and the forms' one exit, which now starts the task at once.
- * The prompts themselves are written by the server (src/server/prompts.ts), in the language the
- * request names.
+ * The prompts themselves are written by the workbench's handler
+ * (workbenches/benchmark/lib/prompts.ts), in the language the request names.
  */
-import type { UiStrings } from "@prismshadow/penguin-ui";
+import { DEFAULT_UI_STRINGS, type UiStrings } from "@prismshadow/penguin-ui";
 import type { ApprovalMode, TaskState, WorkbenchTaskKind } from "../api";
 
 /** The UI package's own words (close crosses, pagers, the Markdown reader), less the A2UI set this page never draws. */
@@ -43,6 +43,44 @@ const zhUi: PageUiStrings = {
     closeFind: "关闭",
     noResults: "无结果",
   },
+  report: {
+    action: "报告问题",
+    title: "报告问题",
+    lead: "这可能是 PenguinHarness 的缺陷，也可能来自网络、模型服务或所连的机器。如果你认为问题出在 PenguinHarness，欢迎到 GitHub 提交 issue，帮助改进这个开源项目。",
+    check: "报告已去掉密钥、Token 与个人路径一类的内容，发送前仍请检查有没有不想公开的信息。",
+    label: "报告",
+    copy: "复制",
+    copied: "已复制报告",
+    copyFailed: "没能复制，请选中报告手动复制",
+    fileIssue: "到 GitHub 提交 issue",
+    crashed: "[出错了]：这部分页面没能显示",
+    reload: "重新加载",
+  },
+  dates: {
+    locale: "zh-CN",
+    pickDate: "选择日期",
+    pickTime: "选择时间",
+    pickDateTime: "选择日期和时间",
+    pickRange: "选择日期范围",
+    fieldName: (label: string, shown: string) => `${label}：${shown}`,
+    today: "今天",
+    clear: "清除",
+    previousMonth: "上个月",
+    nextMonth: "下个月",
+    month: "月份",
+    year: "年份",
+    hour: "小时",
+    minute: "分钟",
+    dayPeriod: "上午/下午",
+    time: "时间",
+    pickEnd: "请选择结束日期",
+    startDate: "开始日期",
+    endDate: "结束日期",
+    cancel: "取消",
+    confirm: "确定",
+    rangeSeparator: "-",
+    done: "完成",
+  },
 };
 
 const enUi: PageUiStrings = {
@@ -73,6 +111,9 @@ const enUi: PageUiStrings = {
     closeFind: "Close",
     noResults: "No results",
   },
+  // The UI package's own English for the problem report and the date pickers.
+  report: DEFAULT_UI_STRINGS.report,
+  dates: DEFAULT_UI_STRINGS.dates,
 };
 
 const EN_MONTHS = [
@@ -111,6 +152,8 @@ export const zh = {
     discardBody: "放弃未保存的修改？未保存的内容将丢失。",
     discard: "放弃修改",
     keepEditing: "继续编辑",
+    /** What a page opened outside a workbench says in place of the app. */
+    notInWorkbench: "这个页面要在自进化工作台中打开。",
   },
   /** How long ago, for a narrow row: minutes, hours and days, then the month and day. */
   relative: {
@@ -134,22 +177,6 @@ export const zh = {
     previewTruncated: "内容过大，预览已截断，请下载查看完整文件",
     previewUnsupported: "该类型不支持预览，请下载查看",
     download: "下载",
-  },
-  semanticId: {
-    generateIdLabel: "用 AI 生成",
-    generateId: "从名称生成 ID",
-    idSuggest: {
-      fromName: "按名称转写生成",
-      placeholder: (reason: string): string =>
-        `模型没有给出可用的 ID（${reason}），已填入占位 ID，请改成有含义的英文名`,
-      reasons: {
-        no_default_model: "未配置默认模型",
-        model_failed: "模型调用失败",
-        unusable_answer: "模型回答不可用",
-        no_ascii: "名称里没有可转写的英文",
-      } as Record<string, string>,
-      reasonUnknown: "原因未知",
-    },
   },
   /** The start forms' shared parts: who does the work, the examples, the prompt fold, the one exit. */
   form: {
@@ -193,8 +220,6 @@ export const zh = {
       running: "进行中",
       waiting: "等待审批",
       done: "已结束",
-      failed: "失败",
-      gone: "已删除",
     } satisfies Record<TaskState, string>,
     pendingApprovals: (n: number): string => `${n} 个步骤等待审批`,
     openChat: "打开对话",
@@ -227,8 +252,6 @@ export const zh = {
         text: "选一个 Benchmark，点「使用」→「优化」，设定目标分数后按「开始」；分数严格提升才保留新版本，也可以换一种自进化算法。",
       },
     ],
-    /** The first step card's text for a Project member: no Create manually, which is the owner's. */
-    guideCreateMember: "点右上角「用 AI 创建」，让 AI 为某个智能体出一套题并取得基线分。",
     searchPlaceholder: "搜索标题、描述或被测智能体",
     noMatches: "没有匹配的 Benchmark",
     filterByAgent: (agentId: string): string => `只看评测过 ${agentId} 的 Benchmark`,
@@ -247,7 +270,6 @@ export const zh = {
     creationFailedDetail:
       "这套题的难度校准没有完成，无法评估或优化；请删除这个 Benchmark，然后重新创建。",
     creationFailedHintMember: "题目难度未能校准完成",
-    creationFailedDetailMember: "这套题的难度校准没有完成，无法评估或优化。",
     testedAgents: "被测过的智能体",
     lastEvaluated: (when: string): string => `最近评估 ${when}`,
     sparklineLabel: (n: number): string => `${n} 次评估的分数走势`,
@@ -375,8 +397,8 @@ export const zh = {
     manualCreateIntro:
       "填好标题、题干与评分细则后，目录结构会按技能约定写入自进化工作台的数据目录；Benchmark 与 Agent 平级，之后可以用它评测任意智能体。",
     idField: "Benchmark id",
-    idHint: "目录名即标识：仅字母、数字、_ 和 -，例如 report-writing-v1",
-    idGenerateHint: "；也可以从标题生成",
+    idHint:
+      "目录名即标识：仅字母、数字、_ 和 -；按标题自动生成，也可以改成自己的，例如 report-writing-v1",
     idExists: "已有同名 Benchmark，请换一个 id",
     titleField: "标题",
     descriptionField: "描述",
@@ -521,6 +543,7 @@ export const en: Strings = {
     discardBody: "Discard unsaved changes? What you typed will be lost.",
     discard: "Discard changes",
     keepEditing: "Keep editing",
+    notInWorkbench: "Open this page in the Self-Evolution Workbench.",
   },
   relative: {
     now: "now",
@@ -543,22 +566,6 @@ export const en: Strings = {
     previewTruncated: "File too large; preview truncated, download for the full file",
     previewUnsupported: "Preview not supported for this type; download instead",
     download: "Download",
-  },
-  semanticId: {
-    generateIdLabel: "Generate with AI",
-    generateId: "Generate an id from the name",
-    idSuggest: {
-      fromName: "Transliterated from the name",
-      placeholder: (reason: string): string =>
-        `The model gave no usable id (${reason}); a placeholder was filled in — please change it to something meaningful`,
-      reasons: {
-        no_default_model: "no default model configured",
-        model_failed: "the model request failed",
-        unusable_answer: "the model's answer was unusable",
-        no_ascii: "the name carries no ASCII to transliterate",
-      },
-      reasonUnknown: "reason unknown",
-    },
   },
   form: {
     withAi: "Create with AI",
@@ -599,8 +606,6 @@ export const en: Strings = {
       running: "Running",
       waiting: "Waiting for approval",
       done: "Done",
-      failed: "Failed",
-      gone: "Deleted",
     },
     pendingApprovals: (n: number): string => `${n} step${n === 1 ? "" : "s"} waiting for approval`,
     openChat: "Open chat",
@@ -632,8 +637,6 @@ export const en: Strings = {
         text: "Pick a Benchmark, press Use → Optimize, set a target score and press Start; a new version is kept only when the score strictly improves. You can also pick another self-evolution algorithm.",
       },
     ],
-    guideCreateMember:
-      "Press Create with AI at the top right to have AI write a set of cases for an agent and take its baseline score.",
     searchPlaceholder: "Search titles, descriptions or tested agents",
     noMatches: "No Benchmark matches",
     filterByAgent: (agentId: string): string => `Benchmarks that evaluated ${agentId}`,
@@ -655,8 +658,6 @@ export const en: Strings = {
     creationFailedDetail:
       "Calibration of this Benchmark never completed, so it cannot be evaluated or optimized; delete it and create it again.",
     creationFailedHintMember: "The cases' difficulty could not be calibrated",
-    creationFailedDetailMember:
-      "Calibration of this Benchmark never completed, so it cannot be evaluated or optimized.",
     testedAgents: "Tested agents",
     lastEvaluated: (when: string): string => `last evaluated ${when}`,
     sparklineLabel: (n: number): string => `Score trend over ${n} evaluation${n === 1 ? "" : "s"}`,
@@ -792,8 +793,7 @@ export const en: Strings = {
       "Fill in the title, the statements and the rubrics; the directory layout the Skills expect is written into the Self-Evolution Workbench's data folder. A Benchmark sits beside agents, so it can then evaluate any of them.",
     idField: "Benchmark id",
     idHint:
-      "The directory name is the identifier: letters, digits, _ and - only, e.g. report-writing-v1",
-    idGenerateHint: "; you can also generate one from the title",
+      "The directory name is the identifier: letters, digits, _ and - only; proposed from the title, and yours to change, e.g. report-writing-v1",
     idExists: "A Benchmark with this id already exists; pick another",
     titleField: "Title",
     descriptionField: "Description",

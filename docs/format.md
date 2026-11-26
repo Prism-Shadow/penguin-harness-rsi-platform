@@ -1,6 +1,6 @@
 # The Benchmark format
 
-A Benchmark is a folder named by its id (letters, digits, `_` and `-`) in a Project's Benchmark folder, which the host names for this app (`<data root>/projects/<project>/agents/system_agent/app/data/benchmark/`). Its **package** is the folder minus what this copy keeps for itself:
+A Benchmark is a folder named by its id (letters, digits, `_` and `-`) in the data folder of a Self-Evolution Workbench: the agent-level data folder of the Agent it is installed on, `<data root>/projects/<project>/agents/<agent>/app/data/benchmark/` (the default Agent's is `agents/default_agent/app/data/benchmark/`). Its **package** is the folder minus what this copy keeps for itself:
 
 ```text
 <benchmark id>/
@@ -10,7 +10,7 @@ A Benchmark is a folder named by its id (letters, digits, `_` and `-`) in a Proj
 │   ├── rubric/README.md      #   how a run is scored, 100 points; never shown to the Test Agent
 │   └── task_config.toml      #   optional, for a case run elsewhere (Harbor)
 ├── scoreboard.yaml           # this copy's evaluations (not package)
-└── .jobs/, .harbor/, …       # this copy's run state (not package)
+└── .jobs/, …                 # this copy's run state (not package)
 ```
 
 `@penguinharness/rsi-workbench/format` reads and writes both files: `parseBenchmarkManifest`, `checkBenchmarkManifest`, `readBenchmarkManifest`, `writeBenchmarkManifest`, `parseScoreboard`, `nextDateVersion`.
@@ -33,7 +33,7 @@ A Benchmark is a folder named by its id (letters, digits, `_` and `-`) in a Proj
 | `[author]` | `name`, `email?`, `homepage?` | optional | as read |
 | `[origin]` | `kind`, `url?`, `ref?`, `path?`, `imported_at?` | where this copy came from; optional | as read |
 
-`[origin].kind` is `builtin` (seeded with the Project), `manual` (the create form), `agent` (benchmark-design wrote it), `git` (an Agent imported a repository folder; `url`, `ref` — a 40-character commit — and `path`) or `zip` (an uploaded package). A manifest that is not TOML, or whose newer keys are out of shape, cannot be read (`benchmark_manifest_invalid`): the Benchmark lists as `failed` with the reason. Keys the format does not know are ignored, and reading never rewrites a file.
+`[origin].kind` is `builtin` (seeded when the workbench first loaded), `manual` (the create form), `agent` (benchmark-design wrote it), `git` (an Agent imported a repository folder; `url`, `ref` — a 40-character commit — and `path`) or `zip` (an uploaded package). A manifest that is not TOML, or whose newer keys are out of shape, cannot be read (`benchmark_manifest_invalid`): the Benchmark lists as `failed` with the reason. Keys the format does not know are ignored, and reading never rewrites a file.
 
 ## `scoreboard.yaml`
 

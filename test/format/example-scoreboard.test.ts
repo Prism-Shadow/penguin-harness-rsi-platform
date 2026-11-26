@@ -1,6 +1,7 @@
 /**
  * The Example Benchmark as data (scripts/example-benchmark.mjs), which scripts/build-seeds.mjs
- * writes into the seeds every new Project starts with.
+ * writes into the workbench's seeds (workbenches/benchmark/seeds/), copied into its data folder
+ * on its first load.
  *
  * Given the Example's manifest, cases and sample scoreboard:
  * - When its manifest goes through the format, it is one a Benchmark may be written with, and it

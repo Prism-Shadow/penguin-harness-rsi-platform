@@ -16,8 +16,8 @@ import type {
   MergedCase,
   WorkbenchBenchmarksResponse,
 } from "../api";
-import { mergeBenchmarkCases, mergeBenchmarks } from "../merge";
-import type { ProjectApi } from "./api";
+import type { SourceResolver } from "./machine-sources";
+import { mergeBenchmarkCases, mergeBenchmarks } from "./merge";
 
 /** Where the reads stand: each source's last answer, and which are still out or failed. */
 interface Answers<T> {
@@ -100,16 +100,16 @@ export interface BenchmarksView {
   error: unknown;
 }
 
-/** The Project's Benchmarks on this server and `machineIds`, asked again on `reloadKey`. */
+/** The workbench's Benchmarks on this server and `machineIds`, asked again on `reloadKey`. */
 export function useBenchmarkSources(
-  api: ProjectApi,
+  resolver: SourceResolver,
   machineIds: readonly string[],
   reloadKey: string,
 ): BenchmarksView {
   const sources = useMemo(() => [null, ...machineIds], [machineIds.join(",")]);
   const { answers, out, failures } = useFanOut<{ benchmarks: BenchmarkSummary[]; dir?: string }>(
     sources,
-    (machineId) => api.listBenchmarks(machineId),
+    async (machineId) => (await resolver.resolve(machineId)).list(),
     "",
     `${sources.join(",")}|${reloadKey}`,
   );
@@ -152,7 +152,7 @@ export interface CasesView {
  * server — merged as each answers, the first copy winning a shared id.
  */
 export function useBenchmarkCases(
-  api: ProjectApi,
+  resolver: SourceResolver,
   benchmarkId: string,
   machineIds: readonly (string | null)[],
   localPage?: number,
@@ -161,10 +161,13 @@ export function useBenchmarkCases(
   const sources = useMemo(() => [...machineIds], [key]);
   const { answers, out, failures } = useFanOut<BenchmarkCasesResponse>(
     sources,
-    (machineId) =>
-      localPage === undefined
-        ? api.cases(benchmarkId, machineId)
-        : api.casePage(benchmarkId, localPage),
+    async (machineId) => {
+      const api = await resolver.resolve(machineId);
+      // Pages are this server's: a machine's copy is read whole, as an older server answers it.
+      return localPage !== undefined && machineId === null
+        ? api.casePage(benchmarkId, localPage)
+        : api.cases(benchmarkId);
+    },
     localPage === undefined ? benchmarkId : `${benchmarkId}/${localPage}`,
     key,
   );

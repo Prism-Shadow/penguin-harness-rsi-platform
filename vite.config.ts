@@ -1,7 +1,7 @@
 /**
- * The iframe app (src/ui) → ui/: React, @prismshadow/penguin-ui and its stylesheet bundled in.
- * The server module serves the folder at /api/rsi-workbench/ui/ (src/server/ui-files.ts), so every
- * asset URL is relative (`base: "./"`).
+ * The workbench's page (src/ui) → workbenches/benchmark/ui/: React, @prismshadow/penguin-ui and
+ * its stylesheet bundled in, and the icon from src/ui/public. The host serves the folder under the
+ * workbench (`…/workbenches/benchmark/ui/`), so every asset URL is relative (`base: "./"`).
  */
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -14,10 +14,10 @@ const here = (rel: string) => fileURLToPath(new URL(rel, import.meta.url));
 export default defineConfig({
   root: here("./src/ui"),
   base: "./",
-  // penguinUi(): the stylesheet link marked `data-penguin-ui`, and no highlighter languages.
+  // penguinUi(): the stylesheet link marked `data-penguin-ui`, no highlighter languages, no Mermaid.
   plugins: [react(), tailwindcss(), ...penguinUi()],
   build: {
-    outDir: here("./ui"),
+    outDir: here("./workbenches/benchmark/ui"),
     emptyOutDir: true,
     sourcemap: false,
     // Hashed names; the same sources build the same bytes, which `npm pack` twice relies on.

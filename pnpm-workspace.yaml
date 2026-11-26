@@ -14,3 +14,7 @@ allowBuilds:
   # Pulled in through @prismshadow/penguin-core (types and the interface generator only).
   "@google/genai": false
   protobufjs: false
+minimumReleaseAgeExclude:
+  - "@prismshadow/amsp@0.2.19"
+  - "@prismshadow/penguin-core@0.2.19"
+  - "@prismshadow/penguin-ui@0.2.19"

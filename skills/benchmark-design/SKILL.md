@@ -1,7 +1,7 @@
 ---
 name: benchmark-design
 description: Design and calibrate a multi-Case capability Benchmark and establish a traceable Formal Baseline, or import a published Benchmark package.
-version: 2026.11.20.2
+version: 2026.11.26.1
 ---
 
 # Benchmark Design
@@ -44,11 +44,11 @@ Use the Environment's `App Data Dir`, the explicit Test Agent id, and the Benchm
 
 ```text
 TEST_AGENT_DIR = <app_data_dir>/agents/<test_agent_id>
-BENCHMARK_DIR  = <the BENCHMARK_DIR the request names>   # when it names none: <app_data_dir>/agents/system_agent/app/data/benchmark/<benchmark_id>
+BENCHMARK_DIR  = <the BENCHMARK_DIR the request names>   # when it names none: <app_data_dir>/agents/default_agent/app/data/benchmark/<benchmark_id>
 SCOREBOARD     = <benchmark_dir>/scoreboard.yaml
 ```
 
-A Benchmark lives in the Self-Evolution Workbench's data folder, not inside the Agent it evaluates: it belongs to the Project and may evaluate several Agents. Pass `BENCHMARK_DIR` on to every evaluation request as `benchmark_dir`. `test_agent_id` names the one this request evaluates, and every Evaluation records it.
+A Benchmark lives in the Self-Evolution Workbench's data folder of the Agent that has the workbench (the default Agent's when the request names none), not in the State of the Agent it evaluates, and may evaluate several Agents. Pass `BENCHMARK_DIR` on to every evaluation request as `benchmark_dir`. `test_agent_id` names the one this request evaluates, and every Evaluation records it.
 
 Access only the specified Test Agent and Benchmark: the Agent State, complete Benchmark, and Test Traces or artifacts from valid evaluations. Do not access other Agents, Project secrets, or Evaluator State, Workspace, or Trace.
 
@@ -134,7 +134,7 @@ For `evaluation_failed`, keep the same Benchmark revision and cell. Diagnose the
 
 Treat the first draft as a hypothesis. The first valid result from every planned Case together forms Pilot iteration 1. A later iteration starts after a difficulty refinement and completes when every affected Case has a valid new result. Request corrections, validity repairs, and evaluation reruns stay in the current iteration and do not consume the requested iteration budget. Use the recorded Agent State version and fixed evaluation runtime.
 
-Keep unselected Pilot results out of the Scoreboard. During calibration, retain only one temporary restorable copy: the lowest-scoring complete valid revision seen so far, including its one-Run-per-Case result. Store it outside the folder that holds the Project's Benchmarks (the parent of `BENCHMARK_DIR`), replace it only when a lower valid revision completes, and never retain invalid revisions.
+Keep unselected Pilot results out of the Scoreboard. During calibration, retain only one temporary restorable copy: the lowest-scoring complete valid revision seen so far, including its one-Run-per-Case result. Store it outside the folder that holds the workbench's Benchmarks (the parent of `BENCHMARK_DIR`), replace it only when a lower valid revision completes, and never retain invalid revisions.
 
 Use the Pilot to find the current Test Agent's capability boundary.
 

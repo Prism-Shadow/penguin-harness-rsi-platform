@@ -1,0 +1,113 @@
+[
+  {
+    "id": "example-benchmark",
+    "title": "Example Benchmark"
+  },
+  {
+    "id": "penguinharness-benchmark-biomedical-repeated-measures",
+    "title": "Biomedical prediction across patients and recordings",
+    "data_url": "https://github.com/Prism-Shadow/biomedical-repeated-measures"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-court-clerk-operations-test",
+    "title": "GDPEVO Essential-Court Clerk Operations-Test",
+    "title_zh": "GDPEVO Essential-法院书记员业务-测试",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-court-clerk-operations-train",
+    "title": "GDPEVO Essential-Court Clerk Operations-Train",
+    "title_zh": "GDPEVO Essential-法院书记员业务-训练",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-coverage-review-test",
+    "title": "GDPEVO Essential-Coverage Review-Test",
+    "title_zh": "GDPEVO Essential-医保审核-测试",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-coverage-review-train",
+    "title": "GDPEVO Essential-Coverage Review-Train",
+    "title_zh": "GDPEVO Essential-医保审核-训练",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-engineering-portfolio-analytics-test",
+    "title": "GDPEVO Essential-Engineering Portfolio Analytics-Test",
+    "title_zh": "GDPEVO Essential-工程项目组合分析-测试",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-engineering-portfolio-analytics-train",
+    "title": "GDPEVO Essential-Engineering Portfolio Analytics-Train",
+    "title_zh": "GDPEVO Essential-工程项目组合分析-训练",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-financial-control-test",
+    "title": "GDPEVO Essential-Financial Control-Test",
+    "title_zh": "GDPEVO Essential-财务管控-测试",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-financial-control-train",
+    "title": "GDPEVO Essential-Financial Control-Train",
+    "title_zh": "GDPEVO Essential-财务管控-训练",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-portfolio-management-test",
+    "title": "GDPEVO Essential-Portfolio Management-Test",
+    "title_zh": "GDPEVO Essential-投资组合管理-测试",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-portfolio-management-train",
+    "title": "GDPEVO Essential-Portfolio Management-Train",
+    "title_zh": "GDPEVO Essential-投资组合管理-训练",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-service-ticket-resolution-test",
+    "title": "GDPEVO Essential-Service Ticket Resolution-Test",
+    "title_zh": "GDPEVO Essential-服务工单处理-测试",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-gdpevo-essential-service-ticket-resolution-train",
+    "title": "GDPEVO Essential-Service Ticket Resolution-Train",
+    "title_zh": "GDPEVO Essential-服务工单处理-训练",
+    "data_url": "https://github.com/Prism-Shadow/gdpevo-essential"
+  },
+  {
+    "id": "penguinharness-benchmark-sec-a",
+    "title": "PenguinHarness Benchmark Sec A",
+    "title_zh": "PenguinHarness 评测集 A",
+    "data_url": "https://github.com/Prism-Shadow/data-analysis-bench"
+  },
+  {
+    "id": "penguinharness-benchmark-sec-b",
+    "title": "PenguinHarness Benchmark Sec B",
+    "title_zh": "PenguinHarness 评测集 B",
+    "data_url": "https://github.com/Prism-Shadow/deepswe"
+  },
+  {
+    "id": "penguinharness-benchmark-sec-c",
+    "title": "PenguinHarness Benchmark Sec C",
+    "title_zh": "PenguinHarness 评测集 C",
+    "data_url": "https://github.com/Prism-Shadow/automationbench"
+  },
+  {
+    "id": "penguinharness-benchmark-sec-d",
+    "title": "PenguinHarness Benchmark Sec D",
+    "title_zh": "PenguinHarness 评测集 D",
+    "data_url": "https://github.com/Prism-Shadow/terminal-bench-science"
+  },
+  {
+    "id": "penguinharness-benchmark-sec-e",
+    "title": "PenguinHarness Benchmark Sec E",
+    "title_zh": "PenguinHarness 评测集 E",
+    "data_url": "https://github.com/Prism-Shadow/terminal-bench"
+  }
+]

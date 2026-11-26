@@ -2,31 +2,37 @@
 
 [中文](README.zh.md)
 
-`@penguinharness/rsi-workbench` is the Self-Evolution Workbench of [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness): the system Agent's app for building Benchmarks and measuring and improving Agents against them. It ships built in with PenguinHarness, opens from the App Center, and runs in the App Center's window.
+`@penguinharness/rsi-workbench` is the Self-Evolution Workbench of [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness): a workbench of the default Agent for building Benchmarks and measuring and improving Agents against them. It ships built in with PenguinHarness, is preinstalled on every new Project's `default_agent`, and opens from the App Center in the app window, like any other Agent workbench.
 
 The platform also maintains the RSI toolkit plugins under `plugins/`. Each toolkit ships in the same release as a separate `penguinharness-<toolkit>-<package-version>.tgz` with its own library card and Skills.
 
-- **Benchmarks.** List, search and filter the Project's Benchmarks, create one by hand, import a package from a zip, export one, or delete it. Each Benchmark's page shows its score history per Agent and model, its evaluations, and its cases' statements and rubrics.
-- **Agent tasks.** Create with AI, Import with an Agent, Evaluate, Optimize and Ask AI start an Agent task straight away, as your own conversation in the sidebar, with the approval mode you choose (allow-all unless you pick another). The workbench lists the tasks it started on each Benchmark, with their state and a link to the conversation.
+- **Benchmarks.** List, search and filter the Benchmarks of the Agent the workbench is installed on, create one by hand, import a package from a zip, export one, or delete it. Each Benchmark's page shows its score history per Agent and model, its evaluations, and its cases' statements and rubrics. Every Project member may create, delete and overwrite.
+- **Agent tasks.** Create with AI, Import with an Agent, Evaluate, Optimize and Ask AI start an Agent task straight away, as your own conversation in the sidebar, with the approval mode you choose (allow-all unless you pick another). The page starts it the way the Web App's Send does, and lists the tasks it started on each Benchmark, with their state and a link to the conversation.
 - **Skills.** `benchmark-design` designs and calibrates a Benchmark or imports a published package; `agent-evaluation` runs and scores one case. Both are preinstalled on `default_agent`, and the RSI toolkits' optimization loops measure through them.
-- **Seeds.** Every new Project starts with the Example Benchmark and the built-in Benchmarks of [penguin-harness-benchmark](https://github.com/Prism-Shadow/penguin-harness-benchmark) at a pinned commit.
+- **Seeds.** The first time the workbench loads, it writes the Example Benchmark and the built-in Benchmarks of [penguin-harness-benchmark](https://github.com/Prism-Shadow/penguin-harness-benchmark) at a pinned commit into its data folder, once.
 - **Format.** `@penguinharness/rsi-workbench/format` reads and writes `benchmark_config.toml` and `scoreboard.yaml` ([docs/format.md](docs/format.md)).
 
 ## How it plugs in
 
-It is a server-module plugin that uses only the plugin system's own interfaces (design: [PRFC-0036](https://github.com/Prism-Shadow/penguin-harness-design/pull/503)):
+The package is data only: no server module, no code entry, nothing the host adds for it (design: [PRFC-0036](https://github.com/Prism-Shadow/penguin-harness-design/pull/619)). `src/index.ts` contributes, for the plugin library:
 
 | Contribution | What it is |
 | --- | --- |
-| `HttpModule.routes` | the data routes under `/api/projects/:projectId/benchmarks` (unchanged from the harness's Evaluation Center), `…/context`, `…/tasks`, and `/api/rsi-workbench/ui/*` (the page's files) |
-| `WebModule.pages` | page `benchmark` at `/benchmark`, drawn as an iframe of `ui/index.html`, with `app` (a system app of the system Agent) |
-| `ProjectsModule.appSeeds` | `seeds/benchmark/`, copied into a new Project's data folder by the host |
-| `SemanticIdModule.kinds` | the `benchmark` id kind and its taken ids |
-| `SystemAppModule.apps` | declares the `benchmark` system app, so its module cannot be stopped |
-| `StartPageModule.metrics` | the start page's Benchmarks count: the upstream suites the built-in Benchmarks come from |
-| `PluginLibraryModule.cards` / `.skills` | the card (category `rsi`, preinstalled) and the two Skills |
+| `PluginLibraryModule.cards` | the card, category `rsi`, preinstalled on `default_agent` |
+| `PluginLibraryModule.skills` | `benchmark-design` and `agent-evaluation` |
+| `PluginLibraryModule.workbenches` | the workbench folder `workbenches/benchmark/`, which an install copies into the Agent's `agent_state/workbenches/benchmark/` |
 
-The host is reached only through the interfaces declared in [`src/server/host.ts`](src/server/host.ts) (`AppData`, `AgentTasks`, `ProjectAccess`, `ProjectAgents`, `AgentSkills`, `ProjectModels`, `PluginCatalog`, `ProjectMachines`, `CaseFiles`), which the kernel matches to the host's by structure. A host without them cannot load the module.
+The workbench folder is all the workbench has at runtime, so everything it needs is inside it:
+
+| Path | What it is |
+| --- | --- |
+| `package.json` | the manifest: one `Workbench` module that requires the host's `WorkbenchHost`, provides `WorkbenchMain` and contributes one tab, an iframe of `ui/index.html` |
+| `index.ts` | the handler, compiled by the host: the Benchmark routes under the workbench's API mount, kept in its agent-level data folder (`<agentDir>/app/data/benchmark/`), the prompt each task sends, the tasks the page started (in the workbench's state), and the seeds written on the first load |
+| `lib/` | the handler's modules: `format/` (a copy of `./format`, written by `scripts/copy-format.mjs`), `vendor/` (smol-toml and yaml as TypeScript source, with their licences) and a zip container over `node:zlib` |
+| `ui/` | the page, built by Vite (React and `@prismshadow/penguin-ui` bundled, no Mermaid): it reads its Project, Agent and server from its own address, and calls the handler and the Web App's own routes as the person who opened it |
+| `seeds/` | the seeded Benchmarks and `catalog.json`, which lists them for the harness's gallery and landing page |
+
+An admin's page also reads each machine's copy of the same Agent's workbench through the host's machine proxy and merges them by id; a machine that has not upgraded is read at its older `/api/projects/:projectId/benchmarks` route (compatibility kept until 1.0).
 
 ## Development
 
@@ -34,18 +40,18 @@ Node 24 and pnpm 11.
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm typecheck
-pnpm test             # vitest: format, server (over a fake host), the page (happy-dom), Skills, scripts
-pnpm build            # tsup (server, ./format) → vite (ui/) → ifaces.json
+pnpm typecheck        # the format copy is current, tsc (package, handler, page), the handler under the host's options, the toolkits
+pnpm test             # vitest: the format, the handler (over a fake host), the page (happy-dom), Skills, scripts
+pnpm build            # tsup (./format) → vite (workbenches/benchmark/ui/) → lib/format → ifaces.json → toolkits
 pnpm format:check
 pnpm pack:check       # after build: the static probe, and npm pack twice with equal sha512
 ```
 
-`scripts/gen-ifaces.mjs` is the harness's interface generator (`packages/core/bin/gen-ifaces.mjs` at harness commit `b87757da8`), vendored because the published `@prismshadow/penguin-core` 0.2.18 predates its `penguin-gen-ifaces` bin; the build switches to the bin once a core release carries it.
+`scripts/check-workbench.mjs` (part of `typecheck`) compiles `workbenches/benchmark/index.ts` the way the host does — `strict`, `module: NodeNext`, `@types/node` only — against the types a 0.2.19 server writes into a workbench folder (`test/fixtures/harness-0.2.19/plugin.d.ts`), then loads what it emitted and lists the seeded Benchmarks. `ifaces.json` is written by `@prismshadow/penguin-core`'s `penguin-gen-ifaces` bin.
 
 ### Seeds
 
-`node scripts/build-seeds.mjs` rebuilds `seeds/benchmark/` from the benchmark repository at `PINNED_COMMIT` (or `--repo <checkout>` for a local clone that has the commit) and writes the Benchmarks count into `src/index.ts`. `--check` fails when either would change; CI runs it. Moving the pin is a change to the package's content.
+`node scripts/build-seeds.mjs` rebuilds `workbenches/benchmark/seeds/` and its `catalog.json` from the benchmark repository at `PINNED_COMMIT` (or `--repo <checkout>` for a local clone that has the commit). `--check` fails when either would change; CI runs it. Moving the pin is a change to the package's content.
 
 ## Release
 

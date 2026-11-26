@@ -37,7 +37,14 @@ export function AgentPicture({
       />
     );
   }
-  return <AgentAvatar id={agentId} name={wb.agentName(agentId)} size={size} className="shrink-0" />;
+  return (
+    <AgentAvatar
+      id={agentId}
+      fallbackName={wb.agentName(agentId)}
+      size={size}
+      className="shrink-0"
+    />
+  );
 }
 
 /** Up to `max` Agents side by side, overlapping, and a "+n" for the rest. */
