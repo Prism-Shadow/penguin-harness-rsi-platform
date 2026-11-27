@@ -2,7 +2,7 @@
 
 Resolve the Project from the Penguin Environment's App Data Dir. Read the selected package's `benchmark_config.toml`, public Case statements and linked runtime instructions. They define task paths, environments, input/output contracts and the Train/Test relationship; OpenSkill defines how Skills are learned.
 
-For repository-backed tasks, record the task repository and the full 40-character lowercase data commit specified by the Task link and checkout instruction. Follow the Case's linked run instructions. If the Case links a shared adapter, record its commit separately, resolving `main` once if needed. Reuse those revisions throughout training and testing. A requested task version selects the matching package. Display packages may be obtained from `main`.
+For repository-backed tasks, record the task repository and the full 40-character lowercase data commit specified by the Task link and checkout instruction. Follow the Case's linked run instructions. The Case’s shared adapter link takes precedence over any adapter version in the task repository’s README. Resolve `main` once if the link uses it, and record the adapter commit separately. Reuse those revisions throughout training and testing. A requested task version selects the matching package. Display packages may be obtained from `main`.
 
 Record the experiment/report version, actual Harness, runner, Benchmark, model and toolkit versions, thinking levels, selected Cases, budgets and resource limits. Prefer user-specified versions and record a model revision when exposed. Use separate output directories for each requested construction run and distinct output paths for each practice attempt and test repetition.
 

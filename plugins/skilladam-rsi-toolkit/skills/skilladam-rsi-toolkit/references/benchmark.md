@@ -14,7 +14,7 @@ Resolve:
 
 A package may contain one Train Case that includes several questions, and several independent Test Cases. Read that mapping explicitly. Do not derive it from an old task-group name or assume every directory is an independent training trial.
 
-For repository-backed tasks, record the task repository and the full 40-character lowercase data commit specified by the Task link and checkout instruction. Follow the Case's linked run instructions. If the Case links a shared adapter, record its commit separately, resolving `main` once if needed. Reuse those revisions throughout training and testing. A requested task version selects the matching package.
+For repository-backed tasks, record the task repository and the full 40-character lowercase data commit specified by the Task link and checkout instruction. Follow the Case's linked run instructions. The Case’s shared adapter link takes precedence over any adapter version in the task repository’s README. Resolve `main` once if the link uses it, and record the adapter commit separately. Reuse those revisions throughout training and testing. A requested task version selects the matching package.
 
 ## Launch and collect
 
