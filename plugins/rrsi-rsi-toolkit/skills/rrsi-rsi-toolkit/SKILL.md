@@ -5,7 +5,7 @@ description: >-
   experiment with a dedicated optimization Session: an annealed edit budget bounds each proposal, a leakage Critic
   screens it before any measurement, a Pruner deletes machinery that stopped earning its place,
   and a noise-adjusted floor plus a token-cost rule select the next harness.
-version: 2026.11.26.1
+version: 2026.11.27.1
 ---
 
 # RRSI
