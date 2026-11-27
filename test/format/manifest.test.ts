@@ -36,7 +36,7 @@ import {
   writeBenchmarkManifest,
   type BenchmarkManifest,
 } from "../../src/format/index.js";
-import { tempRoot } from "../helpers/host.js";
+import { tempRoot } from "../helpers/workbench.js";
 
 let tmp: string;
 

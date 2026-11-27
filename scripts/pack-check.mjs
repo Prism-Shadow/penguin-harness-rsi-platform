@@ -4,15 +4,26 @@
  *   node scripts/pack-check.mjs [--out <dir>]
  *
  * 1. The package a harness build can take as an external built-in plugin (the harness's
- *    scripts/lib/external-plugins.mjs): no runtime `dependencies` or `optionalDependencies`, a
- *    code entry, and the generated `ifaces.json` among its files.
- * 2. Both entries load in plain Node (a bundle that cannot load fails here, not in a host), and the
- *    static probe: `ifaces.json` carries the manifests of exactly the modules the default
- *    export names — the card (`preinstall: true`, category `rsi`) and its Skills, and the app with
- *    its iframe page marked as a system app and its `SystemAppModule.apps` declaration — read
- *    without running the package, as the plugin library and the host's lock read it.
- * 3. `npm pack` twice gives the same bytes: the sha512 the plugin index and the harness's lock
- *    record is a property of the source, not of the run. Both integrities are printed.
+ *    scripts/lib/external-plugins.mjs) and the plugin index files as a resource package: no
+ *    runtime `dependencies` or `optionalDependencies`, no `main` and no `.` export — only subpath
+ *    exports: the code of `./format`, `./api` and `./prompts`, the published files of
+ *    `./workbenches/*`, `./icon.svg` and `./package.json` — and the generated `ifaces.json` among
+ *    its files.
+ * 2. Each code export loads in plain Node, as a consumer imports it, with its declarations beside
+ *    it; `./api` and `./prompts` import nothing at all (no `node:` module, no `require`), so a
+ *    browser bundle can take them.
+ * 3. The static probe, read without running the package, as the plugin library and the host's lock
+ *    read it: `ifaces.json` carries data-only modules (nothing required, provided or bound) whose
+ *    contributions are the card (category `rsi`, no `preinstall`, so preinstalled), the Skills
+ *    (each with its SKILL.md) and the workbench, whose folder holds its manifest — one `Workbench`
+ *    module whose tab renders as an iframe of a page that is built — its `index.ts`, its icon and
+ *    its seeds with their catalog. The built page carries no Mermaid chunk, and its size is printed.
+ *    Every file of the workbench and of each Skill installs as text (`requireText`: strict UTF-8,
+ *    the harness library reader's rule), the toolkits' Skills included.
+ * 4. `npm pack` twice gives the same bytes, for the package and every toolkit: the sha512 the
+ *    plugin index and the harness's lock record is a property of the source, not of the run. The
+ *    workbench travels without what a host writes into a loaded folder (`.build/`, `.harness/`).
+ *    Every integrity is printed.
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -29,57 +40,178 @@ function fail(message) {
   process.exit(1);
 }
 
+const exists = (p) =>
+  fs.access(p).then(
+    () => true,
+    () => false,
+  );
+
+// 1. The package's shape.
 const pkg = JSON.parse(await fs.readFile(path.join(ROOT, "package.json"), "utf8"));
 for (const field of ["dependencies", "optionalDependencies"]) {
   if (pkg[field] !== undefined && Object.keys(pkg[field]).length > 0) {
     fail(`package.json declares ${field}; a built-in plugin bundles what it runs`);
   }
 }
-if (!pkg.files.includes("ifaces.json")) fail("package.json files does not ship ifaces.json");
-if (pkg.exports?.["."]?.import !== "./dist/index.js") fail("no code entry at ./dist/index.js");
-
-// The static probe.
-const table = JSON.parse(await fs.readFile(path.join(ROOT, "ifaces.json"), "utf8"));
-const manifests = table.modules ?? {};
-const names = Object.keys(manifests).map((key) => key.split("#").pop());
-const { default: plugin } = await import(pathToFileURL(path.join(ROOT, "dist", "index.js")).href);
-const exported = (plugin?.modules ?? []).map((cls) => cls.name);
-// The `./format` export loads on its own, as a consumer imports it.
-const format = await import(pathToFileURL(path.join(ROOT, "dist", "format", "index.js")).href);
-if (typeof format.parseScoreboard !== "function") fail("./format does not export parseScoreboard");
-if (exported.length === 0) fail("the default export names no module");
-for (const name of exported) {
-  if (!names.includes(name)) fail(`ifaces.json has no manifest for ${name}`);
+if (pkg.main !== undefined) fail("package.json names a main entry; the package has no code entry");
+const exportKeys = Object.keys(pkg.exports ?? {});
+if (exportKeys.some((key) => key === "." || !key.startsWith("./"))) {
+  fail(
+    `package.json exports ${exportKeys.join(", ")}: a resource package has subpath exports only`,
+  );
 }
-const contributions = Object.values(manifests).flatMap((m) =>
+/** The code exports: each one's folder under dist/, and a value it must export. */
+const CODE_EXPORTS = [
+  ["./format", "format", "parseScoreboard", false],
+  ["./api", "api", "casePage", true],
+  ["./prompts", "prompts", "buildRequest", true],
+];
+for (const [key, dir] of CODE_EXPORTS) {
+  const entry = pkg.exports[key];
+  if (entry?.import !== `./dist/${dir}/index.js` || entry?.types !== `./dist/${dir}/index.d.ts`) {
+    fail(`package.json does not export ${key} from dist/${dir} with its types`);
+  }
+}
+for (const file of [
+  "ifaces.json",
+  "workbenches",
+  ...CODE_EXPORTS.map(([, dir]) => `dist/${dir}`),
+]) {
+  if (!pkg.files.includes(file)) fail(`package.json files does not ship ${file}`);
+}
+
+// 2. Each code export loads on its own; the browser-safe ones import nothing.
+/** An import statement, a re-export from a module, a dynamic import or a require of one. */
+const MODULE_IMPORT =
+  /^\s*(?:import|export)\b[^;]*\bfrom\s*["']|^\s*import\s*["']|\bimport\s*\(\s*["'`]|\brequire\s*\(\s*["'`]/m;
+for (const [key, dir, value, browser] of CODE_EXPORTS) {
+  const file = path.join(ROOT, "dist", dir, "index.js");
+  const loaded = await import(pathToFileURL(file).href);
+  if (typeof loaded[value] !== "function") fail(`${key} does not export ${value}`);
+  if (!(await exists(path.join(ROOT, "dist", dir, "index.d.ts"))))
+    fail(`${key} has no declarations`);
+  if (browser && MODULE_IMPORT.test(await fs.readFile(file, "utf8"))) {
+    fail(`${key} imports a module, which a browser bundle may not resolve`);
+  }
+}
+
+// 3. The static probe.
+const table = JSON.parse(await fs.readFile(path.join(ROOT, "ifaces.json"), "utf8"));
+const manifests = Object.entries(table.modules ?? {});
+if (manifests.length === 0) fail("ifaces.json carries no module");
+// A data-only component requires nothing, has no children, and provides only itself: an interface
+// with no methods and no slots, so nothing of it ever runs.
+for (const [key, manifest] of manifests) {
+  if (Object.keys(manifest.requires ?? {}).length > 0) fail(`${key} requires something`);
+  if ((manifest.children ?? []).length > 0) fail(`${key} has child modules`);
+  for (const provided of Object.values(manifest.provides ?? {})) {
+    const iface = table.ifaces?.[provided];
+    if (iface === undefined)
+      fail(`${key} provides ${provided}, which ifaces.json does not declare`);
+    if (Object.keys(iface.methods ?? {}).length > 0 || Object.keys(iface.slots ?? {}).length > 0) {
+      fail(`${key} provides ${provided} with members: the package's modules are data only`);
+    }
+  }
+}
+const contributions = manifests.flatMap(([, m]) =>
   Object.entries(m.contributes ?? {}).flatMap(([slot, list]) => list.map((c) => ({ slot, ...c }))),
 );
 const find = (slot) => contributions.filter((c) => c.slot === slot);
-const card = find("PluginLibraryModule.cards")[0];
-if (card?.preinstall !== true || card?.category !== "rsi") {
-  fail("the card is not a preinstalled rsi card");
+const cards = find("PluginLibraryModule.cards");
+if (cards.length !== 1 || cards[0].category !== "rsi" || "preinstall" in cards[0]) {
+  fail("the package's one card is not an rsi card that leaves preinstall to its default");
 }
-const page = find("WebModule.pages").find((p) => p.key === "benchmark");
-if (page?.app === undefined || page?.renderer?.iframe?.src === undefined) {
-  fail("the benchmark page is not an iframe system app");
+const skills = find("PluginLibraryModule.skills");
+if (skills.length === 0) fail("the card ships no Skill");
+for (const skill of skills) {
+  if (!(await exists(path.join(ROOT, skill.path, "SKILL.md")))) {
+    fail(`skill ${skill.name} has no ${skill.path}/SKILL.md`);
+  }
 }
-if (!find("SystemAppModule.apps").some((a) => a.app === page.key)) {
-  fail("no SystemAppModule.apps declaration for the benchmark page");
+const workbenches = find("PluginLibraryModule.workbenches");
+if (workbenches.length !== 1 || workbenches[0].name !== "benchmark") {
+  fail("the package contributes no benchmark workbench");
 }
-for (const skill of find("PluginLibraryModule.skills")) {
-  await fs
-    .access(path.join(ROOT, skill.path, "SKILL.md"))
-    .catch(() => fail(`skill ${skill.name} has no ${skill.path}/SKILL.md`));
+const folder = path.join(ROOT, workbenches[0].path);
+const manifest = JSON.parse(await fs.readFile(path.join(folder, "package.json"), "utf8"));
+const modules = manifest.penguin?.modules ?? [];
+const root = modules.find((m) => m.name === "Workbench");
+if (modules.length !== 1 || root === undefined) fail("the workbench is not one Workbench module");
+const tabs = root.contributes?.["WebModule.sessionTabs"] ?? [];
+if (tabs.length === 0) fail("the workbench contributes no tab");
+for (const tab of tabs) {
+  const src = tab.renderer?.iframe?.src;
+  if (typeof src !== "string" || Object.keys(tab.renderer).length !== 1) {
+    fail(`tab ${tab.id} does not render as an iframe`);
+  }
+  if (!(await exists(path.join(folder, src)))) fail(`tab ${tab.id}: ${src} is not built`);
 }
-for (const seeds of find("ProjectsModule.appSeeds")) {
-  await fs.access(path.join(ROOT, seeds.path)).catch(() => fail(`no seeds at ${seeds.path}`));
+for (const rel of [
+  "index.ts",
+  manifest.penguin.icon,
+  manifest.penguin.appCenter?.icon,
+  "seeds/catalog.json",
+]) {
+  if (typeof rel !== "string" || !(await exists(path.join(folder, rel)))) {
+    fail(`the workbench folder has no ${rel}`);
+  }
 }
-await fs
-  .access(path.join(ROOT, "ui", "index.html"))
-  .catch(() => fail("ui/index.html is not built"));
-console.log(`probe: modules ${exported.join(", ")}; ${contributions.length} contributions`);
+const ui = path.join(folder, "ui");
+let uiBytes = 0;
+let uiFiles = 0;
+for (const entry of await fs.readdir(ui, { recursive: true, withFileTypes: true })) {
+  if (!entry.isFile()) continue;
+  // Mermaid's own chunks are named after it and after its diagrams (`flowDiagram-…`).
+  if (/mermaid|diagram|cytoscape/i.test(entry.name)) {
+    fail(`the page carries a Mermaid chunk: ${entry.name}`);
+  }
+  uiBytes += (await fs.stat(path.join(entry.parentPath, entry.name))).size;
+  uiFiles += 1;
+}
 
-// Two packs, one set of bytes.
+/**
+ * The files under `dir` an install would not carry, by path: the harness's library reader
+ * (packages/core plugin/library-reader.ts `readDirFiles`) copies a workbench's, a Skill's and a
+ * hook package's files as text — every regular file whose bytes decode as strict UTF-8
+ * (`TextDecoder("utf-8", { fatal: true, ignoreBOM: true })`), whatever its extension — and leaves
+ * out anything else with a warning ("… is not a text file; it is not installed"), which is fatal
+ * for a built-in plugin. A link or other special entry it skips silently; here it fails too, since
+ * the copy would lose it.
+ */
+const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+async function notInstalledAsText(dir, rel = "") {
+  const out = [];
+  for (const entry of await fs.readdir(path.join(dir, rel), { withFileTypes: true })) {
+    const child = rel === "" ? entry.name : `${rel}/${entry.name}`;
+    if (entry.isDirectory()) out.push(...(await notInstalledAsText(dir, child)));
+    else if (!entry.isFile()) out.push(`${child} (not a regular file)`);
+    else {
+      try {
+        strictUtf8.decode(await fs.readFile(path.join(dir, child)));
+      } catch {
+        out.push(child);
+      }
+    }
+  }
+  return out;
+}
+
+/** Fails when an install of `dir` (named `what`) would leave a file out. */
+async function requireText(dir, what) {
+  const left = await notInstalledAsText(dir);
+  if (left.length > 0) {
+    fail(`${what} holds files an install does not carry as text: ${left.slice(0, 10).join(", ")}`);
+  }
+}
+
+await requireText(folder, `the workbench ${workbenches[0].path}`);
+for (const skill of skills) await requireText(path.join(ROOT, skill.path), `skill ${skill.name}`);
+console.log(
+  `probe: ${manifests.length} data-only module(s), ${contributions.length} contributions; ` +
+    `workbench ${manifest.name} ${manifest.penguin.version}; ui/ ${uiFiles} files, ${uiBytes} bytes`,
+);
+
+// 4. Two packs, one set of bytes.
 const { values } = parseArgs({ options: { out: { type: "string" } } });
 const out = values.out
   ? path.resolve(values.out)
@@ -90,22 +222,33 @@ const toolkits = (await fs.readdir(path.join(ROOT, "plugins"), { withFileTypes: 
   .sort();
 
 for (const cwd of [ROOT, ...toolkits]) {
-  const manifest = JSON.parse(await fs.readFile(path.join(cwd, "package.json"), "utf8"));
+  const own = JSON.parse(await fs.readFile(path.join(cwd, "package.json"), "utf8"));
   const required = ["package.json", "LICENSE", "ifaces.json", "icon.svg"];
-  if (cwd !== ROOT) {
+  if (cwd === ROOT) {
+    required.push(
+      ...CODE_EXPORTS.flatMap(([, dir]) => [`dist/${dir}/index.js`, `dist/${dir}/index.d.ts`]),
+      `${workbenches[0].path}/package.json`,
+      `${workbenches[0].path}/index.ts`,
+      `${workbenches[0].path}/ui/index.html`,
+      `${workbenches[0].path}/seeds/catalog.json`,
+    );
+  } else {
     const { modules } = JSON.parse(await fs.readFile(path.join(cwd, "ifaces.json"), "utf8"));
-    const contributions = Object.values(modules).map((entry) => entry.contributes ?? {});
-    const cards = contributions.flatMap((entry) => entry["PluginLibraryModule.cards"] ?? []);
-    const skills = contributions.flatMap((entry) => entry["PluginLibraryModule.skills"] ?? []);
+    const parts = Object.values(modules).map((entry) => entry.contributes ?? {});
+    const toolkitCards = parts.flatMap((entry) => entry["PluginLibraryModule.cards"] ?? []);
+    const toolkitSkills = parts.flatMap((entry) => entry["PluginLibraryModule.skills"] ?? []);
     if (
-      manifest.name !== "@penguinharness/" + path.basename(cwd) ||
-      cards.length !== 1 ||
-      cards[0].category !== "rsi" ||
-      skills.length === 0
+      own.name !== "@penguinharness/" + path.basename(cwd) ||
+      toolkitCards.length !== 1 ||
+      toolkitCards[0].category !== "rsi" ||
+      toolkitSkills.length === 0
     ) {
-      fail(`${manifest.name}: expected a named RSI toolkit with a library card and Skills`);
+      fail(`${own.name}: expected a named RSI toolkit with a library card and Skills`);
     }
-    for (const skill of skills) required.push(path.posix.join(skill.path, "SKILL.md"));
+    for (const skill of toolkitSkills) {
+      required.push(path.posix.join(skill.path, "SKILL.md"));
+      await requireText(path.join(cwd, skill.path), `${own.name} skill ${skill.name}`);
+    }
   }
   let firstIntegrity;
   for (const run of [1, 2]) {
@@ -119,9 +262,10 @@ for (const cwd of [ROOT, ...toolkits]) {
       }),
     );
     for (const entry of required) {
-      if (!info.files.some((file) => file.path === entry))
-        fail(`${manifest.name}: missing ${entry}`);
+      if (!info.files.some((file) => file.path === entry)) fail(`${own.name}: missing ${entry}`);
     }
+    const written = info.files.find((file) => /(^|\/)\.(build|harness)\//.test(file.path));
+    if (written !== undefined) fail(`${own.name}: ships ${written.path}, which a host writes`);
     const bytes = await fs.readFile(path.join(dest, info.filename));
     const integrity = `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
     if (integrity !== info.integrity || (run === 2 && integrity !== firstIntegrity)) {

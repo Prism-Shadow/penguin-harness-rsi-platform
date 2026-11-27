@@ -1,0 +1,18 @@
+// @ts-nocheck
+// Vendored from yaml (see lib/vendor/README.md): its authors type-check it, the host only compiles it.
+export { createNode } from './doc/createNode.js'
+export type { CreateNodeContext } from './doc/createNode.js'
+export { debug, warn } from './log.js'
+export type { LogLevelId } from './log.js'
+export { createPair } from './nodes/Pair.js'
+export { toJS } from './nodes/toJS.js'
+export type { ToJSContext } from './nodes/toJS.js'
+export { findPair } from './nodes/YAMLMap.js'
+export { map as mapTag } from './schema/common/map.js'
+export { seq as seqTag } from './schema/common/seq.js'
+export { string as stringTag } from './schema/common/string.js'
+export { foldFlowLines } from './stringify/foldFlowLines.js'
+export type { FoldOptions } from './stringify/foldFlowLines.js'
+export type { StringifyContext } from './stringify/stringify.js'
+export { stringifyNumber } from './stringify/stringifyNumber.js'
+export { stringifyString } from './stringify/stringifyString.js'

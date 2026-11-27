@@ -6,7 +6,8 @@
  *   from a repository folder links that folder, and a source that is not http(s) is never rendered
  *   as a link.
  * - A published Benchmark offers Export, a download of its package from the server holding the
- *   copy — through the host's machine proxy for a copy only a machine holds; a draft offers none.
+ *   copy: this workbench's handler, a machine's workbench through the host's machine proxy, or the
+ *   older Project route of a machine still on 0.2.19; a draft offers none.
  * - A Benchmark whose manifest cannot be read shows the notice with the reason in place of the
  *   detail; an id the list does not hold says it was not found.
  * - A case's files are read from the server its listing names: a machine's through the proxy.
@@ -21,7 +22,7 @@ import type { MergedBenchmark } from "../../src/api";
 import { benchmarkFolderLabel } from "../../src/ui/pages/detail-page";
 import { zh } from "../../src/ui/strings";
 import {
-  CONTEXT,
+  BENCHMARKS,
   FakeServer,
   apiError,
   benchmark,
@@ -32,12 +33,16 @@ import {
   hasButton,
   json,
   lastPosted,
+  machineBenchmarks,
   mountApp,
+  record,
   serveProject,
+  session,
   shows,
-  task,
   unmountAll,
   waitFor,
+  type MachineFixture,
+  type ProjectFixture,
 } from "./helpers";
 
 afterEach(async () => {
@@ -49,24 +54,42 @@ afterEach(async () => {
 const FOLDER =
   "https://github.com/Prism-Shadow/penguin-harness-benchmark/tree/c12d65bc20beb5130ed57b3b7983c62d497b7d2f/packages/penguinharness-benchmark-sec-a";
 
-/** Opens `subject`'s page, its copy held by `copies` (null: this server; else a machine). */
+/** Machine m-1, upgraded: its App Center lists this Agent's rsi-workbench. */
+const GPU_BOX: MachineFixture = { label: "gpu-box", workbench: "benchmark" };
+const M1 = machineBenchmarks("m-1", GPU_BOX);
+
+/**
+ * Opens `subject`'s page as an admin, its copy held by `copies` (null: this server; "m-1": the
+ * machine `machine`), once its title is shown.
+ */
 async function openPage(
   subject: MergedBenchmark,
-  extra: (server: FakeServer) => void = () => {},
-  copies: (string | null)[] = [null],
+  {
+    extra = () => {},
+    copies = [null],
+    machine = GPU_BOX,
+    project = {},
+  }: {
+    extra?: (server: FakeServer) => void;
+    copies?: (string | null)[];
+    machine?: MachineFixture;
+    project?: Pick<ProjectFixture, "tasks" | "sessions">;
+  } = {},
 ) {
   const server = serveProject(new FakeServer(), {
+    ...project,
+    isAdmin: true,
     benchmarks: copies.includes(null) ? [subject] : [],
-    machines: { "m-1": copies.includes("m-1") ? [subject] : [] },
-    context: { ...CONTEXT, isAdmin: true, machines: [{ machineId: "m-1", label: "gpu-box" }] },
+    machines: { "m-1": { ...machine, benchmarks: copies.includes("m-1") ? [subject] : [] } },
   });
-  server.on("GET", `/api/projects/proj/benchmarks/${subject.id}/cases`, { cases: [] });
-  server.on("GET", `/api/projects/proj/benchmarks/tasks`, { tasks: [] });
   extra(server);
   server.install();
   const host = fakeHost();
   await mountApp({ at: `/${subject.id}` });
-  await waitFor(() => hasButton(zh.benchmark.backToList), "the Benchmark's page");
+  await waitFor(
+    () => (document.querySelector("h1")?.textContent ?? "").includes(subject.title),
+    "the Benchmark's page",
+  );
   return { server, host };
 }
 
@@ -76,15 +99,15 @@ describe("a Benchmark's page", () => {
   it("names the directory and the version, and links the folder an Agent imported it from", async () => {
     await openPage(
       benchmark({
-        dir: "/srv/penguin/proj/benchmarks/sec-a",
+        dir: "/srv/penguin/proj/agents/default_agent/app/data/benchmark/sec-a",
         version: "2026.10.09.2",
         origin: { kind: "git", url: FOLDER, ref: "c12d65bc" },
       }),
     );
 
-    expect(shows("benchmarks/sec-a")).toBe(true);
-    expect(shows("agents/system_agent/app/data/benchmark/sec-a")).toBe(false);
-    expect(shows("v2026.10.09.2")).toBe(true);
+    await waitFor(() => shows("v2026.10.09.2"), "the version");
+    expect(shows("agents/default_agent/app/data/benchmark/sec-a")).toBe(true);
+    expect(shows("/srv/penguin")).toBe(false);
     expect(links()).toContain(FOLDER);
   });
 
@@ -94,21 +117,30 @@ describe("a Benchmark's page", () => {
     expect(links().some((href) => href?.startsWith("javascript:"))).toBe(false);
   });
 
-  it("offers Export from this server for a published copy", async () => {
+  it("offers Export from this workbench for a published copy", async () => {
     await openPage(benchmark());
 
+    await waitFor(() => hasButton(zh.benchmark.exportBenchmark), "the Export link");
     const exportLink = button(zh.benchmark.exportBenchmark);
-    expect(exportLink.getAttribute("href")).toBe("/api/projects/proj/benchmarks/sec-a/archive");
+    expect(exportLink.getAttribute("href")).toBe(`${BENCHMARKS}/sec-a/archive`);
     expect(exportLink.hasAttribute("download")).toBe(true);
   });
 
-  it("exports a copy only a machine holds through the host's machine proxy", async () => {
-    await openPage(benchmark(), () => {}, ["m-1"]);
+  it("exports a copy only a machine holds from that machine's workbench, through the proxy", async () => {
+    await openPage(benchmark(), { copies: ["m-1"] });
 
+    await waitFor(() => hasButton(zh.benchmark.exportBenchmark), "the Export link");
+    expect(button(zh.benchmark.exportBenchmark).getAttribute("href")).toBe(`${M1}/sec-a/archive`);
+    expect(shows(zh.machines.onMachine("Sec A", "gpu-box"))).toBe(true);
+  });
+
+  it("exports a copy a machine still on 0.2.19 holds from its older Project route", async () => {
+    await openPage(benchmark(), { copies: ["m-1"], machine: { label: "old-box" } });
+
+    await waitFor(() => hasButton(zh.benchmark.exportBenchmark), "the Export link");
     expect(button(zh.benchmark.exportBenchmark).getAttribute("href")).toBe(
       "/server/m-1/api/projects/proj/benchmarks/sec-a/archive",
     );
-    expect(shows(zh.machines.onMachine("Sec A", "gpu-box"))).toBe(true);
   });
 
   it("offers no Export and no Use for a draft", async () => {
@@ -141,70 +173,54 @@ describe("a Benchmark's page", () => {
   });
 
   it("requests case pages as the reader navigates", async () => {
-    const path = "/api/projects/proj/benchmarks/sec-a/cases";
-    const { server } = await openPage(benchmark({ caseCount: 7 }), (s) => {
-      s.on("GET", path, ({ query }) => {
-        const ids = query.get("page") === "1" ? [1, 2, 3, 4, 5] : [6, 7];
-        return json({
-          total: 7,
-          cases: ids.map((i) => ({ id: `CASE-${i}`, title: `Question ${i}` })),
+    const path = `${BENCHMARKS}/sec-a/cases`;
+    const { server } = await openPage(benchmark({ caseCount: 7 }), {
+      extra: (s) => {
+        s.on("GET", path, ({ query }) => {
+          const ids = query.get("page") === "1" ? [1, 2, 3, 4, 5] : [6, 7];
+          return json({
+            total: 7,
+            cases: ids.map((i) => ({ id: `CASE-${i}`, title: `Question ${i}` })),
+          });
         });
-      });
+      },
     });
     const pages = () => server.seen("GET", path).map((request) => request.query.get("page"));
     await waitFor(() => shows("Question 5"));
     expect(pages()).toEqual(["1"]);
     expect(shows("Question 6")).toBe(false);
-    await click(button("下一页"));
+    await click(button(zh.ui.next));
     await waitFor(() => shows("Question 7"));
     expect(shows("Question 5")).toBe(false);
-    await click(button("上一页"));
+    await click(button(zh.ui.previous));
     await waitFor(() => shows("Question 1"));
     expect(pages()).toEqual(["1", "2", "1"]);
   });
 
   it("reads a case's files from the machine that listed it, through the proxy", async () => {
-    const { server } = await openPage(
-      benchmark(),
-      (s) => {
-        s.on("GET", "/api/projects/proj/benchmarks/sec-a/cases", (request) =>
-          json({
-            cases:
-              request.query.get("machine") === "m-1"
-                ? [{ id: "CASE-001-report", title: "Conflicting sources" }]
-                : [],
-          }),
-        );
-        s.on("GET", "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/files", {
-          path: "",
-          entries: [],
+    const files = `${M1}/sec-a/cases/CASE-001-report`;
+    const { server } = await openPage(benchmark(), {
+      copies: [null, "m-1"],
+      extra: (s) => {
+        s.on("GET", `${M1}/sec-a/cases`, {
+          cases: [{ id: "CASE-001-report", title: "Conflicting sources" }],
         });
-        s.on(
-          "GET",
-          "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/rubric/files",
-          { path: "", entries: [] },
-        );
+        s.on("GET", `${files}/files`, { path: "", entries: [] });
+        s.on("GET", `${files}/rubric/files`, { path: "", entries: [] });
       },
-      [null, "m-1"],
-    );
+    });
     await waitFor(() => shows("Conflicting sources"), "the case list");
 
     await click(button(`Conflicting sources${zh.benchmark.viewCase}`));
 
     await waitFor(
-      () =>
-        server.seen(
-          "GET",
-          "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/files",
-        ).length > 0,
+      () => server.seen("GET", `${files}/files`).length > 0,
       "the statement listing from the machine",
     );
-    expect(
-      server.seen(
-        "GET",
-        "/server/m-1/api/projects/proj/benchmarks/sec-a/cases/CASE-001-report/rubric/files",
-      ),
-    ).toHaveLength(1);
+    expect(server.seen("GET", `${files}/rubric/files`)).toHaveLength(1);
+    expect(server.requests.some((r) => r.path.startsWith(`${BENCHMARKS}/sec-a/cases/`))).toBe(
+      false,
+    );
   });
 
   it("opens a run's conversation through the host once its Session is confirmed", async () => {
@@ -222,8 +238,8 @@ describe("a Benchmark's page", () => {
         },
       ],
     });
-    const { host } = await openPage(benchmark({ evaluations: [scored] }), (s) => {
-      s.on("GET", "/api/sessions/session-run-1", json({ session: { sessionId: "session-run-1" } }));
+    const { host } = await openPage(benchmark({ evaluations: [scored] }), {
+      project: { sessions: { "session-run-1": session({ sessionId: "session-run-1" }) } },
     });
 
     await click(button(dateButton()));
@@ -255,8 +271,8 @@ describe("a Benchmark's page", () => {
         },
       ],
     });
-    const { host } = await openPage(benchmark({ evaluations: [scored] }), (s) => {
-      s.on("GET", "/api/sessions/session-gone", apiError(404, "session_not_found"));
+    const { host } = await openPage(benchmark({ evaluations: [scored] }), {
+      project: { sessions: { "session-gone": apiError(404, "session_not_found") } },
     });
 
     await click(button(dateButton()));
@@ -272,24 +288,21 @@ describe("a Benchmark's page", () => {
   });
 
   it("lists the tasks started on it and opens a task's conversation through the host", async () => {
-    const { host } = await openPage(benchmark(), (s) => {
-      s.on("GET", "/api/projects/proj/benchmarks/tasks", (request) =>
-        json({
-          tasks:
-            request.query.get("benchmarkId") === "sec-a"
-              ? [
-                  task({
-                    sessionId: "s-eval",
-                    title: "Evaluate the ticket agent",
-                    benchmarkId: "sec-a",
-                  }),
-                ]
-              : [],
-        }),
-      );
+    const { host } = await openPage(benchmark(), {
+      project: {
+        tasks: [
+          record({ sessionId: "s-eval", benchmarkId: "sec-a" }),
+          record({ sessionId: "s-other", benchmarkId: "sec-b" }),
+        ],
+        sessions: {
+          "s-eval": session({ sessionId: "s-eval", title: "Evaluate the ticket agent" }),
+          "s-other": session({ sessionId: "s-other", title: "Another Benchmark's task" }),
+        },
+      },
     });
     await waitFor(() => shows("Evaluate the ticket agent"), "the task row");
 
+    expect(shows("Another Benchmark's task")).toBe(false);
     expect(shows(zh.tasks.states.running)).toBe(true);
     await click(button(zh.tasks.openChat));
 

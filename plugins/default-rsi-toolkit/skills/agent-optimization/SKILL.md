@@ -1,7 +1,7 @@
 ---
 name: agent-optimization
 description: Improve an Agent State through versioned scores and score-linked Traces from a frozen Benchmark.
-version: 2026.11.20.1
+version: 2026.11.26.1
 ---
 
 # Agent Optimization
@@ -30,12 +30,12 @@ PROJECT_ID = <basename_of_project_dir>
 TARGET = <app_data_dir>/agents/<test_agent_id>
 STATE = <target>/agent_state
 TRACES = <target>/traces
-BENCHMARK = <the BENCHMARK_DIR the request names>   # when it names none: <app_data_dir>/agents/system_agent/app/data/benchmark/<benchmark_id>
+BENCHMARK = <the BENCHMARK_DIR the request names>   # when it names none: <app_data_dir>/agents/default_agent/app/data/benchmark/<benchmark_id>
 SCOREBOARD = <benchmark>/scoreboard.yaml
 SNAPSHOTS = <target>/snapshots
 ```
 
-The Benchmark is Project-level rather than owned by the Test Agent: it lives in the Evaluation Center's data folder and may evaluate several Agents. `test_agent_id` names the one this Session optimizes, and every Evaluation records it. Use only the Evaluations whose `agent_id` is that Agent as a Reference or for diagnosis.
+The Benchmark is not part of the Test Agent's State: it lives in the Self-Evolution Workbench's data folder of the Agent that has the workbench (the default Agent's when the request names none) and may evaluate several Agents. `test_agent_id` names the one this Session optimizes, and every Evaluation records it. Use only the Evaluations whose `agent_id` is that Agent as a Reference or for diagnosis.
 
 Inspect only the requested Test Agent and Benchmark: the Agent State, public Statements, Scoreboard, and score-linked Test Traces or artifacts from the Baseline and this optimization, including rejected Candidates.
 

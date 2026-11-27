@@ -37,7 +37,9 @@ import type {
   OptimizeTaskRequest,
   WorkbenchMethod,
 } from "../../api";
+import { useAgentSkills } from "../agent-skills";
 import { useStrings, useWorkbench } from "../context";
+import { EVALUATION_SKILL, OPTIMIZATION_SKILL } from "../methods";
 import { formatScore } from "../format";
 import { benchmarkTitle, defaultTargetScore, latestScoreOfAgent } from "../metrics";
 import { MAX_RUNS } from "./manual-create-dialog";
@@ -45,10 +47,6 @@ import { ApprovalModeSelect, PromptPreview, StartFooter, useStartTask } from "./
 
 export type UseTab = "evaluate" | "optimize";
 
-/** The Skill an evaluation needs on the agent that carries it out. */
-export const EVALUATION_SKILL = "agent-evaluation";
-/** The default loop's optimizer Skill. */
-export const OPTIMIZATION_SKILL = "agent-optimization";
 /** How many complete passes over the test set a toolkit makes per reported State, by default. */
 export const DEFAULT_TEST_REPETITIONS = 3;
 
@@ -133,10 +131,13 @@ export function UseDialog({
     if (!targetTouched) setTargetScore(String(defaultTarget));
   }, [defaultTarget, targetTouched]);
 
-  const lacksSkill = (agentId: string | null, skill: string): boolean => {
-    const agent = agentId === null ? undefined : wb.agents.find((a) => a.agentId === agentId);
-    return agent !== undefined && !agent.skills.includes(skill);
+  const skillsOf = {
+    evaluator: useAgentSkills(wb.skills, evaluatorId),
+    optimizer: useAgentSkills(wb.skills, optimizerId),
   };
+  /** Whether the Agent's Skills, once read, lack `skill`: unknown ones warn of nothing. */
+  const lacksSkill = (skills: readonly string[] | undefined, skill: string): boolean =>
+    skills !== undefined && !skills.includes(skill);
 
   const runsValue = intIn(runs, 1, MAX_RUNS);
   const repetitionsValue = intIn(testRepetitions, 1, MAX_RUNS);
@@ -175,6 +176,7 @@ export function UseDialog({
             kind: "optimize",
             agentId: runnerId,
             method: method?.plugin ?? "",
+            ...(method !== null && method.kind === "paper" ? { skill: method.skill } : {}),
             testedModel: testModel,
             ...(isDefaultMethod
               ? {
@@ -300,7 +302,7 @@ export function UseDialog({
               <ApprovalModeSelect value={approvalMode} onChange={setApprovalMode} />
             </div>
             {missingSkillStrip(
-              lacksSkill(evaluatorId, EVALUATION_SKILL),
+              lacksSkill(skillsOf.evaluator, EVALUATION_SKILL),
               s.benchmark.evaluatorMissingSkill,
             )}
             <Textarea
@@ -379,7 +381,7 @@ export function UseDialog({
               )}
             </div>
             {missingSkillStrip(
-              lacksSkill(optimizerId, optimizerSkill),
+              lacksSkill(skillsOf.optimizer, optimizerSkill),
               isDefaultMethod
                 ? s.benchmark.optimizerMissingSkill
                 : s.benchmark.methodMissingSkill(method?.plugin ?? "", optimizerSkill),

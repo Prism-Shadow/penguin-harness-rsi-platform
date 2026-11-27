@@ -5,7 +5,7 @@
  * page — and a click anywhere else on the body does too. A card that is not published is masked
  * under a notice — still being built for a draft, creation failed for a Benchmark whose
  * calibration never finished, or a manifest that cannot be read, with the reason behind an icon —
- * with only the owner's delete left live, which is how either is cleaned up.
+ * with only Delete left live (on this server's copy), which is how either is cleaned up.
  */
 import type { MouseEvent } from "react";
 import {
@@ -53,7 +53,7 @@ export function BenchmarkCard({
   onDelete,
 }: {
   benchmark: MergedBenchmark;
-  /** Only the owner deletes, and only this server's copy. */
+  /** Only this server's copy can be deleted from here. */
   canDelete: boolean;
   onOpen: () => void;
   onUse: () => void;

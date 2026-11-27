@@ -1,8 +1,9 @@
 /**
- * The manual New Benchmark form (owner only): title, id, description, runs per case and a list of
+ * The manual New Benchmark form (any member): title, id, description, runs per case and a list of
  * cases, each a statement and a rubric. No Agent is chosen here — a Benchmark belongs to the
- * Project and records the Agent it tested on each evaluation instead. The server writes the
- * layout. Format hints stay visible while typing; the semantics sit behind the "?" marks.
+ * workbench and records the Agent it tested on each evaluation instead. The handler writes the
+ * layout. Format hints stay visible while typing; the semantics sit behind the "?" marks. The id
+ * follows the title (benchmark-id.ts) until it is edited by hand.
  *
  * Create is live once every required field of the form and of each case is filled and nothing is
  * malformed — a malformed id or run count is said under its field as it is typed. Closing the form
@@ -30,7 +31,7 @@ import { ApiError } from "../api";
 import { useStrings, useWorkbench } from "../context";
 import type { Strings } from "../strings";
 import { FailureLine, errorText } from "./failure";
-import { SemanticIdField } from "./semantic-id-field";
+import { proposeBenchmarkId } from "../benchmark-id";
 
 /** Directory names and Benchmark ids share the Agent id alphabet. */
 export const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -143,6 +144,8 @@ export function ManualCreateDialog({
   const { title, id, description, runs, cases } = form.draft;
   /** The id the server refused as taken; cleared by the next edit of the id. */
   const [idTaken, setIdTaken] = useState(false);
+  /** The id was typed by hand: the title no longer proposes one. */
+  const [idEdited, setIdEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const requestClose = useGuardedClose(onClose, form.scope, { locked: busy });
@@ -171,7 +174,7 @@ export function ManualCreateDialog({
     setSubmitError(null);
     try {
       const trimmedDescription = description.trim();
-      const res = await wb.api.createBenchmark({
+      const res = await wb.api.benchmarks.create({
         id: id.trim(),
         title: title.trim(),
         ...(trimmedDescription !== "" ? { description: trimmedDescription } : {}),
@@ -223,24 +226,27 @@ export function ManualCreateDialog({
           label={s.benchmark.titleField}
           required
           value={title}
-          onChange={(e) => form.patch({ title: e.target.value })}
+          onChange={(e) => {
+            const next = e.target.value;
+            form.patch(
+              idEdited
+                ? { title: next }
+                : { title: next, id: next.trim() === "" ? "" : proposeBenchmarkId(next, takenIds) },
+            );
+          }}
           {...errorProp(shownError(errors.title))}
         />
-        <SemanticIdField
+        <Input
           label={s.benchmark.idField}
           hint={s.benchmark.idHint}
-          generateHint={s.benchmark.idGenerateHint}
+          required
           value={id}
-          source={title.trim() || description}
-          taken={takenIds}
-          {...(idTaken
-            ? { error: s.benchmark.idExists }
-            : shownError(errors.id) !== undefined
-              ? { error: shownError(errors.id) }
-              : {})}
+          className="font-mono"
           disabled={busy}
-          onChange={(next) => {
-            form.patch({ id: next });
+          {...errorProp(idTaken ? s.benchmark.idExists : shownError(errors.id))}
+          onChange={(e) => {
+            form.patch({ id: e.target.value });
+            setIdEdited(true);
             setIdTaken(false);
           }}
         />

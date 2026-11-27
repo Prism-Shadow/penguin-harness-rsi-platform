@@ -2,8 +2,12 @@
  * The Agent tasks the page started, beside the conversations they run in. A Benchmark's page lists
  * the tasks started on it; the list page lists the newest create and import tasks, which belong to
  * no Benchmark. Each is one ruled row — what kind of task it is and its conversation's title (its
- * start time until it has one), where it stands, and Open chat — and a task whose conversation is
- * gone is not listed.
+ * start time until it has one), where it stands, and Open chat.
+ *
+ * The workbench's handler keeps the records (`GET …/tasks`); where each conversation stands is read
+ * from the Web App as the viewer (`GET /api/sessions/:id`): running (or compacting), waiting on an
+ * approval, or done. A conversation the viewer cannot read — someone else's, or one deleted — is
+ * not listed. A task read as done is not asked about again while the page runs.
  *
  * The list is read every five seconds while the page can be seen, and not at all while it cannot —
  * the browser tab hidden, or the App Center window minimized (bridge.ts `pageShown`); it is read at
@@ -21,7 +25,8 @@ import {
   RuledSection,
   StatusIcon,
 } from "@prismshadow/penguin-ui";
-import type { TaskState, WorkbenchTask } from "../../api";
+import type { TaskRecord, TaskState, WorkbenchTask } from "../../api";
+import type { HostApi, SessionView } from "../api";
 import { pageShown } from "../bridge";
 import { useStrings, useWorkbench } from "../context";
 import { formatDateTime } from "../format";
@@ -30,6 +35,46 @@ import { formatDateTime } from "../format";
 export const TASK_POLL_MS = 5000;
 
 const isLive = (state: TaskState) => state === "running" || state === "waiting";
+
+/** Where a conversation stands, from the Web App's view of it. */
+export function taskOf(record: TaskRecord, session: SessionView["session"]): WorkbenchTask {
+  const pendingApprovals = session.pendingApprovalCount ?? 0;
+  const state: TaskState =
+    pendingApprovals > 0
+      ? "waiting"
+      : session.status === "running" || session.status === "compacting"
+        ? "running"
+        : "done";
+  const title =
+    typeof session.title === "string" && session.title !== "" ? session.title : undefined;
+  return { ...record, state, ...(title !== undefined ? { title } : {}), pendingApprovals };
+}
+
+/**
+ * The records with where each conversation stands, newest first: a done one from `settled` as it
+ * was last read, every other one read now; a conversation that cannot be read is left out.
+ */
+export async function readTasks(
+  host: Pick<HostApi, "session">,
+  records: readonly TaskRecord[],
+  settled: Map<string, WorkbenchTask>,
+): Promise<WorkbenchTask[]> {
+  const rows = await Promise.all(
+    records.map(async (record): Promise<WorkbenchTask | null> => {
+      const done = settled.get(record.sessionId);
+      if (done !== undefined) return done;
+      try {
+        const task = taskOf(record, (await host.session(record.sessionId)).session);
+        if (task.state === "done") settled.set(record.sessionId, task);
+        return task;
+      } catch {
+        // Not the viewer's to read, gone, or no answer this time: not listed, asked again later.
+        return null;
+      }
+    }),
+  );
+  return rows.filter((row): row is WorkbenchTask => row !== null);
+}
 
 /** The tasks on `benchmarkId` (every task when undefined), newest first; null until read. */
 export function useTasks(
@@ -46,24 +91,28 @@ export function useTasks(
     let timer: number | undefined;
     let seq = 0;
     const states = new Map<string, TaskState>();
+    const done = new Map<string, WorkbenchTask>();
     const read = () => {
       const ask = ++seq;
-      wb.api.tasks(benchmarkId).then(
-        (res) => {
-          if (!live || ask !== seq) return;
-          let finished = false;
-          for (const task of res.tasks) {
-            const before = states.get(task.sessionId);
-            if (before !== undefined && isLive(before) && !isLive(task.state)) finished = true;
-            states.set(task.sessionId, task.state);
-          }
-          setTasks(res.tasks);
-          if (finished) settled.current?.();
-        },
-        () => {
-          // A failed read leaves the rows as they were; the next one tries again.
-        },
-      );
+      wb.api
+        .tasks(benchmarkId)
+        .then((res) => readTasks(wb.host, res.tasks, done))
+        .then(
+          (rows) => {
+            if (!live || ask !== seq) return;
+            let finished = false;
+            for (const task of rows) {
+              const before = states.get(task.sessionId);
+              if (before !== undefined && isLive(before) && !isLive(task.state)) finished = true;
+              states.set(task.sessionId, task.state);
+            }
+            setTasks(rows);
+            if (finished) settled.current?.();
+          },
+          () => {
+            // A failed read leaves the rows as they were; the next one tries again.
+          },
+        );
     };
     const stop = () => {
       if (timer !== undefined) window.clearTimeout(timer);
@@ -95,7 +144,7 @@ export function useTasks(
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [wb.api, benchmarkId, wb.tasksKey]);
+  }, [wb.api, wb.host, benchmarkId, wb.tasksKey]);
 
   return tasks;
 }
@@ -105,7 +154,7 @@ function TaskRow({ task }: { task: WorkbenchTask }) {
   const wb = useWorkbench();
   const what =
     task.title !== undefined && task.title !== "" ? task.title : formatDateTime(task.createdAt);
-  const state = task.state === "gone" ? "done" : task.state;
+  const state = task.state;
   return (
     <li className="flex min-w-0 items-center gap-3 border-b border-line-muted py-1.5 last:border-b-0">
       <span
@@ -147,7 +196,7 @@ export function TasksSection({
   limit?: number;
   className?: string;
 }) {
-  const shown = (tasks ?? []).filter((t) => t.state !== "gone").slice(0, limit);
+  const shown = (tasks ?? []).slice(0, limit);
   if (shown.length === 0) return null;
   return (
     <RuledSection title={title} level={2} className={className}>

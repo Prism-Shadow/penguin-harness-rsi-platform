@@ -9,11 +9,11 @@ importers:
   .:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
       '@prismshadow/penguin-ui':
-        specifier: 0.2.18
-        version: 0.2.18(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.2.19
+        version: 0.2.19(@types/react@19.3.0)(micromark-util-types@2.0.3)(micromark@4.0.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tailwindcss/vite':
         specifier: ^4.1.0
         version: 4.3.5(vite@7.3.8(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
@@ -35,9 +35,6 @@ importers:
       happy-dom:
         specifier: ^20.0.0
         version: 20.14.6
-      hono:
-        specifier: ^4.13.11
-        version: 4.13.19
       prettier:
         specifier: ^3.9.4
         version: 3.10.1
@@ -48,7 +45,7 @@ importers:
         specifier: ^19.1.0
         version: 19.3.1(react@19.3.1)
       smol-toml:
-        specifier: ^1.9.1
+        specifier: 1.9.1
         version: 1.9.1
       tailwindcss:
         specifier: ^4.1.0
@@ -66,68 +63,68 @@ importers:
         specifier: ^4.1.12
         version: 4.1.12(@types/node@24.19.2)(happy-dom@20.14.6)(vite@7.3.8(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
       yaml:
-        specifier: ^2.5.0
+        specifier: 2.9.1
         version: 2.9.1
 
   plugins/ace-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
   plugins/ape-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
   plugins/awm-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
   plugins/default-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
   plugins/openskill-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
   plugins/opro-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
   plugins/rrsi-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
   plugins/skilladam-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
   plugins/skillopt-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
   plugins/trace-rsi-toolkit:
     devDependencies:
       '@prismshadow/penguin-core':
-        specifier: 0.2.18
-        version: 0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
 
 packages:
 
@@ -702,82 +699,20 @@ packages:
     resolution: {integrity: sha512-z8QBKqdfXLPzkLQuG4xp8hrVEMm1PZ1IgxMN2sMbJiFiAKOWXnAzogXn2W4aqIBlP1ea6U5yiqVquvUNM1Cj6Q==}
     engines: {node: '>=20'}
 
-  '@penguinharness/a2ui@0.2.18':
-    resolution: {integrity: sha512-kf90kIN8dv5ZHnRdW950WhYb2kdMAgU3XiUyTctLrgls6Ska9qXHp3ArhXXtAZaNHkDM/5Tn1xmDw7wJ071evg==}
-
-  '@penguinharness/ace-rsi-toolkit@0.2.18':
-    resolution: {integrity: sha512-GHfYeSYRsKoAKnfmJcn/msoBqeUWae7+4uvIDZZ0utdZUH+1C9eUNoZZ8ugjAWD0miokupkbKKT1iDnMN1y/pw==}
-
-  '@penguinharness/agent-company@0.2.18':
-    resolution: {integrity: sha512-TsGOmdabkY5evvXP1QfDoj2SP8g0m1x0RdTcOzdSXZGbDFZbrnObeRQF8NFVvZvR6YTQQSTGeVlm/PfBuKh/UA==}
-
-  '@penguinharness/agent-development@0.2.18':
-    resolution: {integrity: sha512-f5pfH1r6oqBynMNXlDagpXG0I1e/cWsF8BHH4EhM+zG/AlWNLHqIRqFoA0Ja4+7v0zvBMy0ypxfuIJzOa2dVcQ==}
-
-  '@penguinharness/agent-evaluation@0.2.18':
-    resolution: {integrity: sha512-AJmTZeHw3T0fC47cQTPIiMlI6sCc6OFfu+t8k3VEy6P9JNCEddWjaPYwsgqF7w9B+6Qu8E0JttavXhVjOokJIA==}
-
-  '@penguinharness/ape-rsi-toolkit@0.2.18':
-    resolution: {integrity: sha512-saaSlPKqHXuJFaFQWnWiKKhKhW4LJ8UHmw9RQ3XhzDAl4i1WFq+KEXBIz2tLlY4m+Yz9VXY9DHxMg7yIHu9r0Q==}
-
-  '@penguinharness/awm-rsi-toolkit@0.2.18':
-    resolution: {integrity: sha512-mcOLOw210IcLvJASNh5EgEL/+7cOVZSPQmz0plugOk1URshVMVqDhu9nDUT6Ejdlw+XofrGLypLL+9ED3GnJDw==}
-
-  '@penguinharness/browser-automation@0.2.18':
-    resolution: {integrity: sha512-nPbpx5nRxLRyOeqw5sZBs1eEQSlv/w7CJBP+SA+6LUkqxqFg/gJ8tLAnFLWLtcRmrLsOZpOmTxw+fG/VN3IDxg==}
-
-  '@penguinharness/continual-learning@0.2.18':
-    resolution: {integrity: sha512-yILlab8BskcVawOPEgIa2Z91oWQU3BncXciDQ9YqN41eaGokH9t+Ac9prSmOzVSjttqitV/HCGxIIrz9vKHSpw==}
-
-  '@penguinharness/data-analysis@0.2.18':
-    resolution: {integrity: sha512-GRTGo5kRicVSV1Ovr+UY4p7Kg61cfSW/2N0u+eI9AWuAQjjzuNS8pbI1dCmMeXowqADmLcMrEf9ZsyFS0FU1nw==}
-
-  '@penguinharness/default-rsi-toolkit@0.2.18':
-    resolution: {integrity: sha512-r0ndgYnUIOQHawqjbRaMpXbl1Xwx2EGIOFqhmFrTI0iUzbgxvGLJQziHTp6TEoVFjCXYKVwDXY6IlBn3tEBcnA==}
-
-  '@penguinharness/goal@0.2.18':
-    resolution: {integrity: sha512-vvTQgqW+tzvd/0zPRoPGV3erxiM3FRSGuhuTA552khtfDWF9qBArF8Aq5FfU9mPtHqs4nrhhOSGeb9k6dVcy2w==}
-
-  '@penguinharness/humanizer@0.2.18':
-    resolution: {integrity: sha512-mbMXj42jRYH/IiiXxqAcHxsk2mFp7GrU+gkumgQkeJify6UH6djHHWKyWrv0mi3VugHfZwcaMmZMRDVaHhuGew==}
-
-  '@penguinharness/model-development@0.2.18':
-    resolution: {integrity: sha512-dwZCtwHTkx47G+1/fDqPDSXpOvvKYADktS8ofzw3YnSo2Hg0vThzps7Mdf8IeC7QCChd/1tp4uX15TbamyYJjw==}
-
-  '@penguinharness/opro-rsi-toolkit@0.2.18':
-    resolution: {integrity: sha512-VoYsRHn3AD0oVEfkjuEPcSLVn4FDvjBfIVBgiQv1U6HM/FYMt5ZLMWHvTA/Xa59ci1CqA8Uqcx+xGTOajHzoDQ==}
-
-  '@penguinharness/penguin-support@0.2.18':
-    resolution: {integrity: sha512-en6cb15YQTCsJPcZNFMXusIDwzOG7YadNajqtA+EfoGh6x5y/wQFaz0+NjYPJ7u1PopzPuazdQOQQXANDVmebQ==}
-
-  '@penguinharness/skill-porting@0.2.18':
-    resolution: {integrity: sha512-fy1Iv7andgeIsWxH3p4Yj1C98xWf0W3JWxrKQhXfNrJFenzZ5FZC2Oqt4COqRXdhxXdQH9OV+ptEJLVthUHjjQ==}
-
-  '@penguinharness/software-development@0.2.18':
-    resolution: {integrity: sha512-gPNO2cU9rbBoD4ozVVlnoLlxPhp5iTz7DrM8ux3uMgdNeVICCob8c1Qdp2qs4v7FST1WSXlSJNXEudU0e8dlTA==}
-
-  '@penguinharness/use-bento-slides@0.2.18':
-    resolution: {integrity: sha512-G2btBijYps80twbmw/RRJZULEVde9WaXGBCtz4yYqzh2bxik44Y3IKqB5tonHc9rzIJxO6gb6dhoEbB8F5ljRA==}
-
-  '@penguinharness/use-claude-code@0.2.18':
-    resolution: {integrity: sha512-SHujifapy6+heiVINl+SXyMYBN9GuEJ/QDxCVGkOG+CzvrufSXolxYkOjcZ4qcymMtxh1UZKQGOk+2ha6mTW4Q==}
-
-  '@penguinharness/use-firecrawl@0.2.18':
-    resolution: {integrity: sha512-RQm5UukHDnwinWmxp0AbxoBFyDTm3f3NpSYde90K4S/B8bb6SdZEz+eymf2m6P6aur9qZBO6PvYLwAYVh5CkLw==}
-
-  '@prismshadow/amsp@0.2.18':
-    resolution: {integrity: sha512-gjAdjfI1R25KFcZ+be4WXb5csnZPE2He9VDwLOv6vudWpcB+R2eAWlK9Yta+1265zFVTqNKIrTRFSKYNd2Qeow==}
+  '@prismshadow/amsp@0.2.19':
+    resolution: {integrity: sha512-pJE0xSb+9eguOBxgLhg6OBWWICYL5e+sLwvsbJe8o2vc8pRkM6uswfGjVTJWrxo/MC6FpRBOjCCyDt2OaLFHfg==}
     engines: {node: '>=24'}
 
   '@prismshadow/mmsp@0.5.12':
     resolution: {integrity: sha512-3mX+UEJcmraSCI3gX3+lxkqOiSMLKnQB3JaOufsy70AX4F4VfrAI+XY0PoDwnMlo1eklR1mElWj3AtSZWq6ovw==}
 
-  '@prismshadow/penguin-core@0.2.18':
-    resolution: {integrity: sha512-+VOFfpO+evZRQ6r8DxNZ0kwlpc+rmvhbQhMPCvCyrTrLnIjRAFCRlO6rOz43cnnACwKSALYSBPXA+WKN/Ok4zA==}
+  '@prismshadow/penguin-core@0.2.19':
+    resolution: {integrity: sha512-u7eE8wWlL2iT4rrBWYUQ7BTwUzydUGMA/jufNQ1CRx0PfxBYFiRdT5xVF+nd7oUQgIUXIu1CgMweujRtbhWuCQ==}
     engines: {node: '>=24'}
+    hasBin: true
 
-  '@prismshadow/penguin-ui@0.2.18':
-    resolution: {integrity: sha512-7JZwdvsZiDTuarIJr+py07IgC3eilO+l2brks4skmSHZOXbZARSd8pDP4ihrGGvBIPUEQveakW0or7B3pvoqBg==}
+  '@prismshadow/penguin-ui@0.2.19':
+    resolution: {integrity: sha512-R+p+u1CYneeVUzFkvUCmZRGGdDbXr2BkMd7w9vTye4RO7aHbePWK5ap2PEbtNdPhs2kDTTSHR8gKI411RZSfbA==}
     peerDependencies:
       react: ^19.1.0
       react-dom: ^19.1.0
@@ -1970,6 +1905,10 @@ packages:
     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==}
     engines: {node: '>=6.9.0'}
 
+  get-east-asian-width@1.7.0:
+    resolution: {integrity: sha512-XjH1AECxf0giL2V1aU8vKyRR2ppRUb5c0EvT7zuJTokQ74bNo52zOtghqdWIqrhUD79fo3x0WfKZdOqxF6LG1Q==}
+    engines: {node: '>=18'}
+
   get-intrinsic@1.3.0:
     resolution: {integrity: sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==}
     engines: {node: '>= 0.4'}
@@ -2037,10 +1976,6 @@ packages:
 
   hastscript@9.0.3:
     resolution: {integrity: sha512-1ALZXSmCGmW3h8AMz4R4+QKSKFi7sNgXLVwmwB8FYVtl1CwQ3WDkSAEY/d5tp1g/vbQgq2s1WlHgfO3jbw1TsA==}
-
-  hono@4.13.19:
-    resolution: {integrity: sha512-KmXvQAXwcAHV+muzbIwoJ23niEB5nMoDVr9WcRkU8mvjUECm/1+7v4Jgp7P7a+H6MLFrh+vXrGonGrGS+RQfkA==}
-    engines: {node: '>=16.9.0'}
 
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==}
@@ -2332,6 +2267,25 @@ packages:
 
   micromark-core-commonmark@2.0.4:
     resolution: {integrity: sha512-wxEeE8v8XVvOrxn1TZj74qYhAtTQsSqufHVS3uNVyT1MupXxhyaHk8/9xDNPh9BmL77QNDgWTkZ3RsYHB2ry7w==}
+
+  micromark-extension-cjk-friendly-util@3.0.1:
+    resolution: {integrity: sha512-GcbXqTTHOsiZHyF753oIddP/J2eH8j9zpyQPhkof6B2JNxfEJabnQqxbCgzJNuNes0Y2jTNJ3LiYPSXr6eJA8w==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      micromark-util-types: '*'
+    peerDependenciesMeta:
+      micromark-util-types:
+        optional: true
+
+  micromark-extension-cjk-friendly@2.0.2:
+    resolution: {integrity: sha512-/BqZNCkDWg3Hj9zEEcRitZ5uMF3X78qmBFuP17oAjnVDZ0+H1GHiDKMJZDpJsXasCHEn/kzl6QHozUiWgCHtPQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      micromark: ^4.0.0
+      micromark-util-types: ^2.0.0
+    peerDependenciesMeta:
+      micromark-util-types:
+        optional: true
 
   micromark-extension-gfm-autolink-literal@2.1.0:
     resolution: {integrity: sha512-oOg7knzhicgQ3t4QCjCWgTmfNhvQbDDnJeVu9v81r7NltNCVmhPy1fJRX27pISafdjL+SVc4d3l48Gb6pbRypw==}
@@ -3678,49 +3632,7 @@ snapshots:
     dependencies:
       zod: 4.6.7
 
-  '@penguinharness/a2ui@0.2.18': {}
-
-  '@penguinharness/ace-rsi-toolkit@0.2.18': {}
-
-  '@penguinharness/agent-company@0.2.18': {}
-
-  '@penguinharness/agent-development@0.2.18': {}
-
-  '@penguinharness/agent-evaluation@0.2.18': {}
-
-  '@penguinharness/ape-rsi-toolkit@0.2.18': {}
-
-  '@penguinharness/awm-rsi-toolkit@0.2.18': {}
-
-  '@penguinharness/browser-automation@0.2.18': {}
-
-  '@penguinharness/continual-learning@0.2.18': {}
-
-  '@penguinharness/data-analysis@0.2.18': {}
-
-  '@penguinharness/default-rsi-toolkit@0.2.18': {}
-
-  '@penguinharness/goal@0.2.18': {}
-
-  '@penguinharness/humanizer@0.2.18': {}
-
-  '@penguinharness/model-development@0.2.18': {}
-
-  '@penguinharness/opro-rsi-toolkit@0.2.18': {}
-
-  '@penguinharness/penguin-support@0.2.18': {}
-
-  '@penguinharness/skill-porting@0.2.18': {}
-
-  '@penguinharness/software-development@0.2.18': {}
-
-  '@penguinharness/use-bento-slides@0.2.18': {}
-
-  '@penguinharness/use-claude-code@0.2.18': {}
-
-  '@penguinharness/use-firecrawl@0.2.18': {}
-
-  '@prismshadow/amsp@0.2.18': {}
+  '@prismshadow/amsp@0.2.19': {}
 
   '@prismshadow/mmsp@0.5.12(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)':
     dependencies:
@@ -3740,31 +3652,10 @@ snapshots:
       - ws
       - zod
 
-  '@prismshadow/penguin-core@0.2.18(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)':
+  '@prismshadow/penguin-core@0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)':
     dependencies:
       '@modelcontextprotocol/client': 2.4.0
-      '@penguinharness/a2ui': 0.2.18
-      '@penguinharness/ace-rsi-toolkit': 0.2.18
-      '@penguinharness/agent-company': 0.2.18
-      '@penguinharness/agent-development': 0.2.18
-      '@penguinharness/agent-evaluation': 0.2.18
-      '@penguinharness/ape-rsi-toolkit': 0.2.18
-      '@penguinharness/awm-rsi-toolkit': 0.2.18
-      '@penguinharness/browser-automation': 0.2.18
-      '@penguinharness/continual-learning': 0.2.18
-      '@penguinharness/data-analysis': 0.2.18
-      '@penguinharness/default-rsi-toolkit': 0.2.18
-      '@penguinharness/goal': 0.2.18
-      '@penguinharness/humanizer': 0.2.18
-      '@penguinharness/model-development': 0.2.18
-      '@penguinharness/opro-rsi-toolkit': 0.2.18
-      '@penguinharness/penguin-support': 0.2.18
-      '@penguinharness/skill-porting': 0.2.18
-      '@penguinharness/software-development': 0.2.18
-      '@penguinharness/use-bento-slides': 0.2.18
-      '@penguinharness/use-claude-code': 0.2.18
-      '@penguinharness/use-firecrawl': 0.2.18
-      '@prismshadow/amsp': 0.2.18
+      '@prismshadow/amsp': 0.2.19
       '@prismshadow/mmsp': 0.5.12(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
       arktype: 2.2.10
       smol-toml: 1.9.1
@@ -3780,12 +3671,21 @@ snapshots:
       - ws
       - zod
 
-  '@prismshadow/penguin-ui@0.2.18(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@prismshadow/penguin-ui@0.2.19(@types/react@19.3.0)(micromark-util-types@2.0.3)(micromark@4.0.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@shikijs/langs': 4.6.0
       '@shikijs/themes': 4.6.0
       katex: 0.16.47
+      mdast-util-gfm-footnote: 2.1.0
+      mdast-util-gfm-strikethrough: 2.0.1
+      mdast-util-gfm-table: 2.0.1
+      mdast-util-gfm-task-list-item: 2.0.1
       mermaid: 11.17.2
+      micromark-extension-cjk-friendly: 2.0.2(micromark-util-types@2.0.3)(micromark@4.0.3)
+      micromark-extension-gfm-footnote: 2.1.0
+      micromark-extension-gfm-strikethrough: 2.1.0
+      micromark-extension-gfm-table: 2.1.2
+      micromark-extension-gfm-task-list-item: 2.1.0
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
       react-markdown: 10.1.0(@types/react@19.3.0)(react@19.3.1)
@@ -3797,6 +3697,8 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
       - immer
+      - micromark
+      - micromark-util-types
       - supports-color
       - use-sync-external-store
 
@@ -5079,6 +4981,8 @@ snapshots:
 
   gensync@1.0.0-beta.2: {}
 
+  get-east-asian-width@1.7.0: {}
+
   get-intrinsic@1.3.0:
     dependencies:
       call-bind-apply-helpers: 1.0.2
@@ -5221,8 +5125,6 @@ snapshots:
       hast-util-parse-selector: 4.0.0
       property-information: 7.2.0
       space-separated-tokens: 2.0.2
-
-  hono@4.13.19: {}
 
   html-url-attributes@3.0.1: {}
 
@@ -5617,6 +5519,25 @@ snapshots:
       micromark-util-resolve-all: 2.0.1
       micromark-util-subtokenize: 2.1.0
       micromark-util-symbol: 2.0.1
+      micromark-util-types: 2.0.3
+
+  micromark-extension-cjk-friendly-util@3.0.1(micromark-util-types@2.0.3):
+    dependencies:
+      get-east-asian-width: 1.7.0
+      micromark-util-character: 2.1.1
+      micromark-util-symbol: 2.0.1
+    optionalDependencies:
+      micromark-util-types: 2.0.3
+
+  micromark-extension-cjk-friendly@2.0.2(micromark-util-types@2.0.3)(micromark@4.0.3):
+    dependencies:
+      devlop: 1.1.0
+      micromark: 4.0.3
+      micromark-extension-cjk-friendly-util: 3.0.1(micromark-util-types@2.0.3)
+      micromark-util-chunked: 2.0.1
+      micromark-util-resolve-all: 2.0.1
+      micromark-util-symbol: 2.0.1
+    optionalDependencies:
       micromark-util-types: 2.0.3
 
   micromark-extension-gfm-autolink-literal@2.1.0:

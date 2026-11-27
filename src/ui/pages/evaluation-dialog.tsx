@@ -19,7 +19,7 @@ import {
   Modal,
 } from "@prismshadow/penguin-ui";
 import type { AskEvaluationFacts, BenchmarkCaseScore, MergedEvaluation } from "../../api";
-import { ApiError, getSession } from "../api";
+import { ApiError, hostApi, machineApiBase } from "../api";
 import { useStrings, useWorkbench } from "../context";
 import {
   formatDateTime,
@@ -204,7 +204,12 @@ export function EvaluationDialog({
   const openRun = async (sessionId: string) => {
     setRunError(null);
     try {
-      await getSession(sessionId, evaluation.machineId);
+      // Asked of the server that holds the run: this one, or the machine the evaluation came from.
+      const host =
+        evaluation.machineId === null
+          ? wb.host
+          : hostApi(machineApiBase(wb.address.apiBase, evaluation.machineId), wb.address.projectId);
+      await host.session(sessionId);
       wb.openSession(sessionId);
     } catch (e) {
       setRunError(

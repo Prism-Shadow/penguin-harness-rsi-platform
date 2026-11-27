@@ -1,13 +1,13 @@
 /**
- * The list: every Benchmark of the Project as one card, with the loop a novice needs spelled out in
+ * The list: every Benchmark of this workbench as one card, with the loop a novice needs spelled out in
  * three step cards under the title — write the cases, evaluate an agent on them, optimize it
  * against the scores. A Benchmark sits beside the Agents rather than under one, so the page is a
  * flat list, and the Agents a card names are the ones its scoreboard has tested. `?agentId=`
  * narrows the list to the Benchmarks that tested that Agent.
  *
- * For an admin the server has already merged every machine's copies; a machine that did not answer
- * is named in one quiet line above the list. Besides creating a Benchmark, any member may import
- * one; creating by hand and deleting are the owner's. The create and import tasks started here
+ * For an admin the page merges every machine's copies as they land; a machine that did not answer
+ * is named in one quiet line above the list. Every member may create a Benchmark with AI or by
+ * hand, import one and delete one (this server's copy). The create and import tasks started here
  * belong to no Benchmark, so the newest few are listed under the cards.
  */
 import { useState } from "react";
@@ -26,6 +26,7 @@ import {
   Skeleton,
   SkeletonCard,
   toastSuccess,
+  Waiting,
 } from "@prismshadow/penguin-ui";
 import type { MergedBenchmark, WorkbenchBenchmarksResponse } from "../../api";
 import { useStrings, useWorkbench } from "../context";
@@ -43,8 +44,7 @@ import { UseDialog } from "./use-dialog";
 const RECENT_TASKS = 3;
 
 /**
- * The header's entry points: Import benchmark for every member, then Create with AI, and Create
- * manually for the owner alone (the create route answers anyone else with 403).
+ * The header's entry points: Import benchmark, then Create with AI and Create manually.
  */
 export function CreateEntries({
   onAi,
@@ -56,13 +56,13 @@ export function CreateEntries({
   onImport?: () => void;
 }) {
   const s = useStrings();
-  const wb = useWorkbench();
   const create = (
     <CreateButtons
       size="sm"
       onAi={onAi}
       aiLabel={s.form.withAi}
-      {...(wb.isOwner ? { onManual, manualLabel: s.form.manual } : {})}
+      onManual={onManual}
+      manualLabel={s.form.manual}
     />
   );
   if (onImport === undefined) return create;
@@ -81,10 +81,9 @@ export function CreateEntries({
   );
 }
 
-/** The three steps of the loop, a card each; a member's first leaves out Create manually. */
+/** The three steps of the loop, a card each. */
 function GuideSteps() {
   const s = useStrings();
-  const wb = useWorkbench();
   return (
     <div className="mt-3 grid gap-3 md:grid-cols-3">
       {s.benchmark.guideFlow.map((step, i) => (
@@ -96,9 +95,7 @@ function GuideSteps() {
             <span className="font-mono tabular-nums text-fg-subtle">{i + 1}</span>
             <span className="font-semibold text-fg">{step.title}</span>
           </span>
-          <p className="mt-1 leading-relaxed">
-            {i === 0 && !wb.isOwner ? s.benchmark.guideCreateMember : step.text}
-          </p>
+          <p className="mt-1 leading-relaxed">{step.text}</p>
         </div>
       ))}
     </div>
@@ -191,7 +188,7 @@ export function ListPage({
     setDeleteBusy(true);
     setDeleteError(null);
     try {
-      await wb.api.deleteBenchmark(deleting);
+      await wb.api.benchmarks.remove(deleting);
       toastSuccess(s.benchmark.deleted);
       setDeleting(null);
       onChanged();
@@ -210,7 +207,11 @@ export function ListPage({
   if (benchmarks === null && error !== null) {
     body = <FailureLine text={errorText(error, s)} className="px-1" />;
   } else if (benchmarks === null) {
-    body = <CardSkeletons rows={4} />;
+    body = (
+      <Waiting label={s.common.loading}>
+        <CardSkeletons rows={4} />
+      </Waiting>
+    );
   } else if (benchmarks.length === 0) {
     body = (
       <EmptyState
@@ -229,7 +230,7 @@ export function ListPage({
             key={b.id}
             benchmark={b}
             // Only this server's copy can be deleted from here.
-            canDelete={wb.isOwner && b.machineIds.includes(null)}
+            canDelete={b.machineIds.includes(null)}
             onOpen={() => open(b.id)}
             onUse={() => setUsing(b.id)}
             onDelete={() => {

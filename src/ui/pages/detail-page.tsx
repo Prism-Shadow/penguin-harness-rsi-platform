@@ -15,7 +15,7 @@ import {
   ICONS,
   PageFrame,
   PageHeader,
-  Skeleton,
+  Waiting,
 } from "@prismshadow/penguin-ui";
 import type {
   BenchmarkManifestProblem,
@@ -55,21 +55,19 @@ export function benchmarkFolderLabel(
 
 /**
  * What stands in place of the detail for a Benchmark that is not published. Deleting and creating
- * again is a failed Benchmark's only way out, and only the owner may delete, so a member is told
- * what happened without being sent to that step.
+ * again is a failed Benchmark's only way out, and every member may delete one.
  */
 export function UnpublishedNotice({
   failed,
-  isOwner,
   manifestError,
 }: {
   failed: boolean;
-  isOwner: boolean;
   manifestError?: BenchmarkManifestProblem;
 }) {
   const s = useStrings();
   if (manifestError !== undefined) {
-    const hint = isOwner ? s.benchmark.manifestBrokenHint : s.benchmark.manifestBrokenHintMember;
+    // The page has no Delete of its own: the list card offers it, for this server's copy.
+    const hint = s.benchmark.manifestBrokenHintMember;
     return (
       <EmptyState
         title={s.benchmark.manifestBroken}
@@ -81,12 +79,7 @@ export function UnpublishedNotice({
     return <EmptyState title={s.benchmark.building} description={s.benchmark.buildingDetail} />;
   }
   return (
-    <EmptyState
-      title={s.benchmark.creationFailed}
-      description={
-        isOwner ? s.benchmark.creationFailedDetail : s.benchmark.creationFailedDetailMember
-      }
-    />
+    <EmptyState title={s.benchmark.creationFailed} description={s.benchmark.creationFailedDetail} />
   );
 }
 
@@ -123,7 +116,7 @@ export function BenchmarkHeaderFacts({
   const s = useStrings();
   const wb = useWorkbench();
   const source = benchmark.origin?.kind === "git" ? webLink(benchmark.origin.url) : null;
-  const folder = benchmarkFolderLabel(benchmark.dir, wb.projectId, benchmark.id);
+  const folder = benchmarkFolderLabel(benchmark.dir, wb.address.projectId, benchmark.id);
   return (
     <span className="block min-w-0">
       <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
@@ -207,17 +200,11 @@ export function DetailPage({
   } else if (missing) {
     body = <EmptyState title={s.benchmark.notFound} description={s.benchmark.notFoundHint} />;
   } else if (benchmark === null) {
-    body = (
-      <div className="space-y-3">
-        <Skeleton className="h-6 w-64" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    body = <Waiting form="page" label={s.common.loading} />;
   } else if (masked) {
     body = (
       <UnpublishedNotice
         failed={failed}
-        isOwner={wb.isOwner}
         {...(benchmark.manifestError !== undefined
           ? { manifestError: benchmark.manifestError }
           : {})}
@@ -244,7 +231,11 @@ export function DetailPage({
               description: (
                 <BenchmarkHeaderFacts
                   benchmark={benchmark}
-                  exportUrl={wb.api.archiveUrl(benchmark.id, benchmark.machineIds[0] ?? null)}
+                  exportUrl={
+                    wb.sources
+                      .resolved(benchmark.machineIds[0] ?? null)
+                      ?.archiveUrl(benchmark.id) ?? undefined
+                  }
                 />
               ),
             }

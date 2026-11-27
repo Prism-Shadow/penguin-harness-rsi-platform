@@ -1,38 +1,42 @@
 /**
- * build-seeds: the shipped Benchmarks and the start page's Benchmarks count.
+ * build-seeds: the Benchmarks the workbench folder ships as its seeds, and their catalog.
  *
  * Given a benchmark repository's `packages/` (a fixture here; the pinned commit in a release):
  * - each published package is copied as its manifest and its cases' statements, rubrics and task
  *   configs, with an empty scoreboard, and nothing else of the package comes along;
  * - a package whose id is not its folder's, that is not published, or that has no case stops the
  *   build;
- * - the count is the distinct non-empty `data_url`s, so packages of one upstream suite count once
- *   and a seed with none (the Example) not at all, and it is written into the contribution's
- *   literal;
- * - the package as shipped contributes the count its own seeds give.
+ * - the catalog lists every seed folder by id, with its title, its Chinese title and its
+ *   `data_url` when the manifest gives them (packages of one upstream suite share their
+ *   `data_url`), in id order; a seed with no title goes by its id, and neither a file beside the
+ *   seeds nor a folder without a manifest is listed.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stringify as stringifyToml } from "smol-toml";
-import { tempRoot } from "../helpers/host.js";
+import { tempRoot } from "../helpers/workbench.js";
 // @ts-expect-error: a plain ES module script, no declarations
-import { countSuites, stagePackages, withSuiteCount } from "../../scripts/build-seeds.mjs";
+import { catalogOf, stagePackages } from "../../scripts/build-seeds.mjs";
 
-const ROOT = path.join(import.meta.dirname, "..", "..");
+interface PackageOptions {
+  title?: string;
+  titleZh?: string;
+  dataUrl?: string;
+  status?: string;
+  cases?: string[];
+  folder?: string;
+}
 
-async function writePackage(
-  packages: string,
-  id: string,
-  options: { dataUrl?: string; status?: string; cases?: string[]; folder?: string } = {},
-) {
+async function writePackage(packages: string, id: string, options: PackageOptions = {}) {
   const dir = path.join(packages, options.folder ?? id);
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(
     path.join(dir, "benchmark_config.toml"),
     stringifyToml({
       id,
-      title: id,
+      title: options.title ?? id,
+      ...(options.titleZh !== undefined ? { title_zh: options.titleZh } : {}),
       status: options.status ?? "published",
       ...(options.dataUrl !== undefined ? { data_url: options.dataUrl } : {}),
     }),
@@ -67,7 +71,9 @@ describe("build-seeds", () => {
   it("copies a package's manifest and case materials with an empty scoreboard, and nothing else", async () => {
     await writePackage(packages, "bench-a", { dataUrl: "https://example.test/suite-a" });
     expect(await stagePackages(packages, out)).toEqual(["bench-a"]);
-    const files = (await fs.readdir(path.join(out, "bench-a"), { recursive: true })).sort();
+    const files = (await fs.readdir(path.join(out, "bench-a"), { recursive: true }))
+      .map((file) => file.split(path.sep).join("/"))
+      .sort();
     expect(files).toEqual([
       "CASE-001-a",
       "CASE-001-a/rubric",
@@ -94,24 +100,38 @@ describe("build-seeds", () => {
     await expect(stagePackages(packages, out)).rejects.toThrow(/no cases/);
   });
 
-  it("counts one suite per distinct data_url, none for a seed without one", async () => {
-    await writePackage(packages, "suite-train", { dataUrl: "https://example.test/suite" });
-    await writePackage(packages, "suite-test", { dataUrl: "https://example.test/suite" });
-    await writePackage(packages, "other", { dataUrl: "https://example.test/other" });
-    await writePackage(packages, "local");
+  it("catalogs every seed by id with its title, Chinese title and data_url, in id order", async () => {
+    await writePackage(packages, "suite-train", {
+      title: "Suite (train)",
+      titleZh: "套件（训练）",
+      dataUrl: "https://example.test/suite",
+    });
+    await writePackage(packages, "suite-test", {
+      title: "Suite (test)",
+      dataUrl: "https://example.test/suite",
+    });
+    await writePackage(packages, "local", { title: "Local" });
     await stagePackages(packages, out);
-    expect(await countSuites(out)).toBe(2);
+
+    expect(await catalogOf(out)).toEqual([
+      { id: "local", title: "Local" },
+      { id: "suite-test", title: "Suite (test)", data_url: "https://example.test/suite" },
+      {
+        id: "suite-train",
+        title: "Suite (train)",
+        title_zh: "套件（训练）",
+        data_url: "https://example.test/suite",
+      },
+    ]);
   });
 
-  it("writes the count into the contribution's literal and refuses a file without the marker", () => {
-    const text = "a\n  // build-seeds:suites — x\n  value: 7,\nb";
-    expect(withSuiteCount(text, 9)).toBe("a\n  // build-seeds:suites — x\n  value: 9,\nb");
-    expect(() => withSuiteCount("value: 7,", 9)).toThrow(/marker/);
-  });
+  it("names a seed without a title by its id, leaves blank keys out, and lists neither a file beside the seeds nor a folder without a manifest", async () => {
+    await writePackage(packages, "untitled", { title: " ", titleZh: "", dataUrl: "" });
+    await stagePackages(packages, out);
+    // The previous build's catalog, and a folder that is no Benchmark.
+    await fs.writeFile(path.join(out, "catalog.json"), "[]\n");
+    await fs.mkdir(path.join(out, "scratch", "CASE-001-a"), { recursive: true });
 
-  it("ships the count its own seeds give", async () => {
-    const index = await fs.readFile(path.join(ROOT, "src", "index.ts"), "utf8");
-    const suites = await countSuites(path.join(ROOT, "seeds", "benchmark"));
-    expect(withSuiteCount(index, suites)).toBe(index);
+    expect(await catalogOf(out)).toEqual([{ id: "untitled", title: "untitled" }]);
   });
 });

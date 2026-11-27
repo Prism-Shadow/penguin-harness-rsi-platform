@@ -1,14 +1,17 @@
 /**
  * What every part of the page reads without having it passed down: the strings table of the
- * interface language, and the workbench itself — the Project, its view from `…/benchmarks/context`,
- * the viewer's currency, where the page is, and the few actions that reach outside a dialog
- * (moving, opening a conversation, announcing a started task).
+ * interface language, and the workbench itself — whose workbench it is and where its routes are,
+ * the Project as the viewer sees it (context-load.ts), the viewer's currency, where the page is,
+ * and the few actions that reach outside a dialog (moving, opening a conversation, announcing a
+ * started task).
  */
 import { createContext, useContext } from "react";
 import type { WorkbenchAgent, WorkbenchContext, WorkbenchTask } from "../api";
-import type { ProjectApi } from "./api";
+import type { HostApi, WorkbenchApi } from "./api";
+import type { AgentSkills } from "./agent-skills";
 import type { Currency } from "./format";
-import type { Locale } from "./frame-facts";
+import type { Locale, PageAddress } from "./frame-facts";
+import type { SourceResolver } from "./machine-sources";
 import type { Route } from "./router";
 import { zh, type Strings } from "./strings";
 
@@ -20,12 +23,18 @@ export function useStrings(): Strings {
 }
 
 export interface WorkbenchValue {
-  projectId: string;
-  api: ProjectApi;
+  address: PageAddress;
+  /** This workbench's handler. */
+  api: WorkbenchApi;
+  /** The Web App's routes, on the server the page came from. */
+  host: HostApi;
+  /** Where each server's copies are read from (this server's handler, a machine's). */
+  sources: SourceResolver;
+  /** The Skills installed on each Agent, read when a form needs them. */
+  skills: AgentSkills;
   locale: Locale;
   context: WorkbenchContext;
   currency: Currency;
-  isOwner: boolean;
   /** The Agents a task can go to (the system Agent is never among them). */
   agents: readonly WorkbenchAgent[];
   /** The Agent a task goes to unless a form picks another; null in a Project with none. */
@@ -46,8 +55,6 @@ export interface WorkbenchValue {
   dismissStarted: () => void;
   /** Bumped whenever a task starts, so every task list reads again. */
   tasksKey: number;
-  /** Reads the Project's view again (after a plugin was installed on an Agent). */
-  reloadContext: () => void;
 }
 
 export const WorkbenchCtx = createContext<WorkbenchValue | null>(null);

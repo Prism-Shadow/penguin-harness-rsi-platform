@@ -1,6 +1,6 @@
 {
   "name": "@penguinharness/openskill-rsi-toolkit",
-  "version": "0.2.22-rc.1",
+  "version": "0.2.22-rc.2",
   "description": "OpenSkill RSI: retrieve independent knowledge, refine reusable skills with virtual tests, freeze the final library, then evaluate native Project Benchmarks.",
   "keywords": [
     "penguin-plugin",
@@ -27,9 +27,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "node ../../scripts/gen-ifaces.mjs --project tsconfig.json --out ifaces.json"
+    "build": "penguin-gen-ifaces --project tsconfig.json --out ifaces.json"
   },
   "devDependencies": {
-    "@prismshadow/penguin-core": "0.2.18"
+    "@prismshadow/penguin-core": "0.2.19"
   }
 }

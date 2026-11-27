@@ -1,5 +1,5 @@
 /**
- * How the UI package is bundled into the frame, as two build plugins (`penguinUi()`):
+ * How the UI package is bundled into the frame, as build plugins (`penguinUi()`):
  *
  * - The built page's stylesheet `<link>` carries `data-penguin-ui`. The stylesheet holds the UI
  *   package's compiled CSS (imported first in main.tsx) with the page's own utilities after it;
@@ -8,6 +8,9 @@
  * - The package's code-highlighting languages (`@shikijs/langs/*`) are left out. They are loaded
  *   only by a code highlighter, which the page never mounts, yet the package's language table
  *   names every one of them, so the bundle would otherwise carry each as a chunk of its own.
+ * - Mermaid is left out. The package's Markdown draws a ```mermaid fence with it, loaded on first
+ *   use, so the bundle would carry Mermaid and its diagram chunks; the page draws every fence as
+ *   code instead (case-markdown.tsx), so nothing here ever loads it.
  */
 import type { Plugin } from "vite";
 
@@ -24,6 +27,10 @@ const SHIKI_LANGUAGE = /^@shikijs\/langs\//;
 /** The one empty module every language import resolves to. */
 const NO_LANGUAGE = "\0penguin-ui-no-language";
 
+const MERMAID = /^mermaid(\/|$)/;
+/** What an import of Mermaid resolves to: a module with nothing in it (its name names no diagram). */
+const NO_MERMAID = "\0penguin-ui-left-out";
+
 export function penguinUi(): Plugin[] {
   return [
     {
@@ -37,6 +44,13 @@ export function penguinUi(): Plugin[] {
       enforce: "pre",
       resolveId: (id) => (SHIKI_LANGUAGE.test(id) ? NO_LANGUAGE : null),
       load: (id) => (id === NO_LANGUAGE ? "export default [];" : null),
+    },
+    {
+      name: "penguin-ui-no-mermaid",
+      apply: "build",
+      enforce: "pre",
+      resolveId: (id) => (MERMAID.test(id) ? NO_MERMAID : null),
+      load: (id) => (id === NO_MERMAID ? "export default {};" : null),
     },
   ];
 }

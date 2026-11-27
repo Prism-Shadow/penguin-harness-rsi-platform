@@ -305,7 +305,7 @@ export function BenchmarkDetail({ benchmark: bm }: { benchmark: MergedBenchmark 
   const [page, setPage] = useState(0);
   const localOnly = bm.machineIds.length === 1 && bm.machineIds[0] === null;
   const casesView = useBenchmarkCases(
-    wb.api,
+    wb.sources,
     bm.id,
     bm.machineIds,
     localOnly ? page + 1 : undefined,
@@ -333,7 +333,7 @@ export function BenchmarkDetail({ benchmark: bm }: { benchmark: MergedBenchmark 
   const opened = openEvaluation === null ? null : (evaluations[openEvaluation] ?? null);
   // An evaluation displays all its scored cases, including those outside the current page.
   const evaluationCases = useBenchmarkCases(
-    wb.api,
+    wb.sources,
     bm.id,
     localOnly && opened?.cases.length ? bm.machineIds : [],
   );

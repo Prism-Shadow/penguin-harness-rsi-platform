@@ -1,25 +1,24 @@
 /**
- * build-seeds: writes `seeds/benchmark/`, the Benchmarks every new Project starts with, and the
- * start page's Benchmarks count, from the benchmark repository at one pinned commit.
+ * build-seeds: writes `workbenches/benchmark/seeds/`, the Benchmarks the workbench writes into
+ * its data folder the first time it loads, and their `catalog.json`, from the benchmark
+ * repository at one pinned commit.
  *
  *   node scripts/build-seeds.mjs                    # fetch the pinned commit from GitHub
  *   node scripts/build-seeds.mjs --repo <checkout>  # read it from a local clone that has it
- *   node scripts/build-seeds.mjs --check [...]      # fail when seeds/ or the count would change
+ *   node scripts/build-seeds.mjs --check [...]      # fail when the seeds or the catalog would change
  *
  * The built-in Benchmarks are the `packages/*` of Prism-Shadow/penguin-harness-benchmark at
  * PINNED_COMMIT: each package's `benchmark_config.toml` as it is, and per `CASE-*` its
  * `statement/README.md`, `rubric/README.md` and `task_config.toml` (when it has one); every copy
  * gets an empty `scoreboard.yaml`. Beside them, the Example Benchmark (example-benchmark.mjs),
- * with its sample evaluations. The host copies these folders into a new Project's data folder
- * (PRFC-0036 `ProjectsModule.appSeeds`), so the seeds are part of this package's integrity: moving
- * the pin is a change to the package, reviewed like any other.
+ * with its sample evaluations. The workbench's handler copies these folders into its data folder
+ * once (workbenches/benchmark/lib/seeds.ts), so the seeds are part of this package's integrity:
+ * moving the pin is a change to the package, reviewed like any other.
  *
- * The count is the landing page's rule (PRFC-0036, "the start page's Benchmarks count"): the upstream benchmark
- * suites the built-in Benchmarks come from, one per distinct non-empty `data_url` (the GDPevo
- * packages share one; the Example has none). It is written as the literal of the
- * `StartPageModule.metrics` contribution in src/index.ts, on the line after its
- * `build-seeds:suites` marker, since the interface generator reads that literal without running
- * anything.
+ * `catalog.json` lists every seed by id with its title, Chinese title and `data_url` (catalogOf),
+ * for the harness's gallery and landing page, which count the upstream suites by `data_url` (the
+ * GDPevo packages share one; the Example has none). It is a file, so the handler's seeding, which
+ * copies folders, leaves it where it is.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
@@ -42,9 +41,8 @@ export const BENCHMARK_REPOSITORY = "https://github.com/Prism-Shadow/penguin-har
 export const PINNED_COMMIT = "b44bb87feba731a9e342a9054b2d8641f48e589c";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SEEDS_DIR = path.join(ROOT, "seeds", "benchmark");
-const INDEX_FILE = path.join(ROOT, "src", "index.ts");
-const SUITES_MARKER = "build-seeds:suites";
+const SEEDS_DIR = path.join(ROOT, "workbenches", "benchmark", "seeds");
+const CATALOG_FILE = "catalog.json";
 
 /** Code-unit order: the same on every machine, whatever its locale. */
 const byName = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
@@ -126,28 +124,29 @@ export async function stagePackages(packagesDir, outDir) {
   return ids;
 }
 
-/** The distinct non-empty `data_url`s of the seeds in `seedsDir`: the upstream suites. */
-export async function countSuites(seedsDir) {
-  const urls = new Set();
-  for (const entry of await fs.readdir(seedsDir, { withFileTypes: true })) {
+/**
+ * The catalog of the seeds in `seedsDir`: one `{ id, title, title_zh?, data_url? }` per seed, by
+ * id, read from each manifest. The harness's gallery and landing page list the built-in Benchmarks
+ * from it without reading every manifest, and count the upstream suites by their `data_url`.
+ */
+export async function catalogOf(seedsDir) {
+  const out = [];
+  for (const entry of (await fs.readdir(seedsDir, { withFileTypes: true })).sort(byName)) {
     if (!entry.isDirectory()) continue;
     const file = path.join(seedsDir, entry.name, "benchmark_config.toml");
     if (!existsSync(file)) continue;
-    const { data_url: dataUrl } = parseToml(await fs.readFile(file, "utf8"));
-    if (typeof dataUrl === "string" && dataUrl.trim() !== "") urls.add(dataUrl.trim());
+    const manifest = parseToml(await fs.readFile(file, "utf8"));
+    const text = (value) => (typeof value === "string" && value.trim() !== "" ? value : undefined);
+    const titleZh = text(manifest.title_zh);
+    const dataUrl = text(manifest.data_url);
+    out.push({
+      id: entry.name,
+      title: text(manifest.title) ?? entry.name,
+      ...(titleZh !== undefined ? { title_zh: titleZh } : {}),
+      ...(dataUrl !== undefined ? { data_url: dataUrl } : {}),
+    });
   }
-  return urls.size;
-}
-
-/** `text` (src/index.ts) with the literal after the marker set to `count`. */
-export function withSuiteCount(text, count) {
-  const lines = text.split("\n");
-  const at = lines.findIndex((line) => line.includes(SUITES_MARKER));
-  if (at === -1 || !/^\s*value: \d+,$/.test(lines[at + 1] ?? "")) {
-    throw new Error(`src/index.ts has no "value: <n>," line after its ${SUITES_MARKER} marker`);
-  }
-  lines[at + 1] = lines[at + 1].replace(/\d+/, String(count));
-  return lines.join("\n");
+  return out;
 }
 
 /** The benchmark repository's `packages/` at the pin, extracted under `temp`. */
@@ -207,15 +206,19 @@ async function main() {
     await fs.mkdir(staged);
     const ids = await stagePackages(packages, staged);
     await writeExample(staged);
-    const suites = await countSuites(staged);
-    const index = await fs.readFile(INDEX_FILE, "utf8");
-    const nextIndex = withSuiteCount(index, suites);
+    const catalog = await catalogOf(staged);
+    await fs.writeFile(
+      path.join(staged, CATALOG_FILE),
+      `${JSON.stringify(catalog, null, 2)}\n`,
+      "utf8",
+    );
+    const suites = new Set(catalog.flatMap((seed) => (seed.data_url ? [seed.data_url] : []))).size;
     if (values.check) {
-      const fresh = (await sameTree(staged, SEEDS_DIR)) && nextIndex === index;
+      const fresh = await sameTree(staged, SEEDS_DIR);
       console.log(
         fresh
-          ? `seeds/benchmark/ is the pinned commit's (${ids.length} packages, ${suites} suites)`
-          : `seeds/benchmark/ or the suite count differs from ${PINNED_COMMIT}: run node scripts/build-seeds.mjs`,
+          ? `workbenches/benchmark/seeds/ is the pinned commit's (${ids.length} packages, ${suites} suites)`
+          : `workbenches/benchmark/seeds/ differs from ${PINNED_COMMIT}: run node scripts/build-seeds.mjs`,
       );
       process.exitCode = fresh ? 0 : 1;
       return;
@@ -223,9 +226,8 @@ async function main() {
     await fs.rm(SEEDS_DIR, { recursive: true, force: true });
     await fs.mkdir(path.dirname(SEEDS_DIR), { recursive: true });
     await fs.cp(staged, SEEDS_DIR, { recursive: true });
-    if (nextIndex !== index) await fs.writeFile(INDEX_FILE, nextIndex, "utf8");
     console.log(
-      `seeds/benchmark/: ${ids.length} packages from ${PINNED_COMMIT} and the Example; ${suites} upstream suites`,
+      `workbenches/benchmark/seeds/: ${ids.length} packages from ${PINNED_COMMIT} and the Example; ${suites} upstream suites`,
     );
   } finally {
     await fs.rm(temp, { recursive: true, force: true });

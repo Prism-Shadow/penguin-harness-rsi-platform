@@ -9,14 +9,14 @@ export default defineConfig({
           environment: "node",
           include: [
             "test/format/**/*.test.ts",
-            "test/server/**/*.test.ts",
+            "test/workbench/**/*.test.ts",
             "test/skills/**/*.test.ts",
             "test/scripts/**/*.test.ts",
           ],
         },
       },
       {
-        // The root tsconfig.json is the server's; the iframe app's JSX setting lives in
+        // The root tsconfig.json is the handler's; the page's JSX setting lives in
         // tsconfig.ui.json, which esbuild does not pick up for these files on its own.
         esbuild: { jsx: "automatic" },
         test: {

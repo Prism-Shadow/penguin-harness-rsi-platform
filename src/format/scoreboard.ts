@@ -30,7 +30,7 @@
  * evaluations, so one bad entry never hides the rest.
  */
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import type { BenchmarkCaseScore, BenchmarkEvaluation, BenchmarkRunScore } from "../api.js";
+import type { BenchmarkCaseScore, BenchmarkEvaluation, BenchmarkRunScore } from "./types.js";
 
 export type { BenchmarkCaseScore, BenchmarkEvaluation, BenchmarkRunScore };
 

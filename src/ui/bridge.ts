@@ -5,7 +5,10 @@
  *   after replacing its own history entry; the host posts it when its address moved on its own
  *   (Back, Forward, a pasted address), and the page goes there without reloading.
  * - `{ type: "penguin:navigate", to }`, from the page: take the viewer to `to`, a path of the Web
- *   App such as a conversation. The host minimizes the window first.
+ *   App such as a conversation. The host minimizes the window first. A host that predates the
+ *   message answers nothing: when the page is still shown a moment later, it takes the whole
+ *   tab there itself (`openInHost`). An older host keeps no inner location either, and the page
+ *   moves inside itself all the same.
  *
  * A message counts only from `window.parent` on this origin; the page posts only to its own origin.
  * Outside a frame there is no host, and nothing is posted or taken.
@@ -98,4 +101,25 @@ export function pageShown(): boolean {
     // A frame of another origin: the document's own visibility is all there is to go on.
   }
   return true;
+}
+
+/** How long the host has to take the viewer away before the page does it itself. */
+export const NAVIGATE_FALLBACK_MS = 800;
+
+/**
+ * Takes the viewer to `to`, a path of the Web App: asks the host (`penguin:navigate`), which
+ * minimizes the window and goes there; when the page is still shown after
+ * {@link NAVIGATE_FALLBACK_MS} — a host that predates the message, or no host at all — the top
+ * window goes there instead.
+ */
+export function openInHost(to: string): void {
+  postNavigate(to);
+  window.setTimeout(() => {
+    if (!pageShown()) return;
+    try {
+      (window.top ?? window).location.assign(to);
+    } catch {
+      window.location.assign(to);
+    }
+  }, NAVIGATE_FALLBACK_MS);
 }

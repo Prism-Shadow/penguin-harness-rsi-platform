@@ -3,11 +3,11 @@
  *
  * - Import with an agent: a folder link in a repository such as Prism-Shadow/penguin-harness-benchmark,
  *   a local path or a description. Start sends it as an `import` task to the Project's default
- *   Agent, which fetches the package at a commit it pins and copies it in; the server never fetches
+ *   Agent, which fetches the package at a commit it pins and copies it in; the handler never fetches
  *   the link itself. The full prompt is folded underneath, a placeholder standing in for the source
  *   until one is typed.
  * - Upload zip: a package zip — what a Benchmark page's Export downloads — checked and written by
- *   the server (`POST …/benchmarks/archive`). A taken id answers 409 `benchmark_exists`, and the
+ *   the workbench's handler (`POST …/benchmarks/archive`). A taken id answers 409 `benchmark_exists`, and the
  *   overwrite confirm says what an overwrite costs; anything else refused is said under the button.
  *
  * Any member may take either path. Closing with a source typed asks first, and nothing closes the
@@ -28,7 +28,7 @@ import {
   useGuardedClose,
 } from "@prismshadow/penguin-ui";
 import type { ApprovalMode, BenchmarkSummary, ImportTaskRequest } from "../../api";
-import { ApiError, type ProjectApi } from "../api";
+import { ApiError, type BenchmarksApi } from "../api";
 import { useStrings, useWorkbench } from "../context";
 import type { Strings } from "../strings";
 import { FailureLine, errorText } from "./failure";
@@ -55,7 +55,7 @@ export type ArchiveUploadResult =
  * `details.benchmarkId` names (`fallbackId`, the picked file's stem, covers an answer without it).
  */
 export async function uploadBenchmarkArchive(
-  api: ProjectApi,
+  api: Pick<BenchmarksApi, "importArchive">,
   dataBase64: string,
   options: { overwrite: boolean; fallbackId: string },
   s: Strings,
@@ -130,7 +130,12 @@ export function ImportDialog({
   const upload = async (dataBase64: string, fallbackId: string, overwrite: boolean) => {
     setUploading(true);
     setUploadError(null);
-    const result = await uploadBenchmarkArchive(wb.api, dataBase64, { overwrite, fallbackId }, s);
+    const result = await uploadBenchmarkArchive(
+      wb.api.benchmarks,
+      dataBase64,
+      { overwrite, fallbackId },
+      s,
+    );
     setUploading(false);
     if (result.kind === "imported") {
       setOverwriting(null);

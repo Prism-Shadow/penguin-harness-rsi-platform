@@ -11,7 +11,7 @@ Resolve the Project from the Environment's App Data Dir, and each Benchmark's fo
 ```text
 TARGET    = <app_data_dir>/agents/<test_agent_id>
 STATE     = TARGET/agent_state
-BENCHMARK = <the BENCHMARK_DIR the request names>   # when it names none: <app_data_dir>/agents/system_agent/app/data/benchmark/<benchmark_id>
+BENCHMARK = <the BENCHMARK_DIR the request names>   # when it names none: <app_data_dir>/agents/default_agent/app/data/benchmark/<benchmark_id>
 CASE      = BENCHMARK/<case_id>
 ```
 
