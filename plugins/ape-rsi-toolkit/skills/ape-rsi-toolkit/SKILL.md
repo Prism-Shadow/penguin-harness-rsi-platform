@@ -4,7 +4,7 @@ description: >-
   Reproduce APE (Large Language Models are Human-Level Prompt Engineers, Zhou et al. 2022)
   on an agent and a frozen Benchmark, or on the house-style brief demo task shipped with
   this Skill: induce instructions from input/output examples, measure each one, keep the best.
-version: 2026.11.26.1
+version: 2026.11.27.1
 ---
 
 # APE

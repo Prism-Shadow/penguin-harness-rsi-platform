@@ -4,7 +4,7 @@ description: >-
   Reproduce OPRO (Large Language Models as Optimizers, Yang et al. 2023) on an agent and a
   frozen Benchmark, or on the precise-summary demo task shipped with this Skill: propose
   instructions from the scored history, measure each one, keep the best.
-version: 2026.11.26.1
+version: 2026.11.27.1
 ---
 
 # OPRO
