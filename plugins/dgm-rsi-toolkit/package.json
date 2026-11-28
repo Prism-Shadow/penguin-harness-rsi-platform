@@ -1,0 +1,36 @@
+{
+  "name": "@penguinharness/dgm-rsi-toolkit",
+  "version": "0.2.19-rc.2",
+  "description": "The DGM RSI Toolkit: the Darwin Gödel Machine (Sakana AI, 2025, https://arxiv.org/abs/2505.22954), run the way the paper does — an archive holds the Target's harness variants, parents are drawn from it by score and diversity, a fresh Modifier session edits the parent's files into one candidate, every candidate is measured on the frozen Benchmark, and admitted variants join the archive for open-ended search. Self-contained: it creates the Target's harness slot, evaluates its own cells and writes the Evaluation Center's scoreboard.",
+  "keywords": [
+    "penguin-plugin",
+    "penguinharness",
+    "skills"
+  ],
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Prism-Shadow",
+    "url": "https://github.com/Prism-Shadow"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Prism-Shadow/penguin-harness-rsi-platform.git",
+    "directory": "plugins/dgm-rsi-toolkit"
+  },
+  "files": [
+    "icon.svg",
+    "skills",
+    "hooks",
+    "ifaces.json",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node ../../scripts/gen-ifaces.mjs --project tsconfig.json --out ifaces.json"
+  },
+  "devDependencies": {
+    "@prismshadow/penguin-core": "0.2.19"
+  }
+}

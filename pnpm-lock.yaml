@@ -89,6 +89,12 @@ importers:
       '@prismshadow/penguin-core':
         specifier: 0.2.19
         version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+  plugins/dgm-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
 
   plugins/openskill-rsi-toolkit:
     devDependencies:
@@ -101,6 +107,12 @@ importers:
       '@prismshadow/penguin-core':
         specifier: 0.2.19
         version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+  plugins/reflexion-rsi-toolkit:
+    devDependencies:
+      '@prismshadow/penguin-core':
+        specifier: 0.2.19
+        version: 0.2.19(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(ws@8.23.0)(zod@4.6.7)
+
 
   plugins/rrsi-rsi-toolkit:
     devDependencies:
